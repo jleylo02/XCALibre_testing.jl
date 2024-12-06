@@ -133,6 +133,4 @@ using Plots
 
  tauw_ss = [tauw.x.values[125],tauw.x.values[67],tauw.x.values[29],tauw.x.values[1]]
 
- Cf_blas=0.664/Re
-
- Cf= tauw_ss[1]/(0.5*)
+ plot(x, tauw.x.values/(0.5*velocity[1]^2))
