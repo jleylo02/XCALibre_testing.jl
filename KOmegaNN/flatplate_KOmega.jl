@@ -131,6 +131,7 @@ using Plots
 
  x_ss = [x[125],x[67], x[29],x[1],]
 
- tauw_ss = [tauw.x.values[125],tauw.x.values[67],tauw.x.values[29],tauw.x.values[1]]
+ tauw_ss = [tauw.x.values[125],tauw.x.values[67],tauw.x.values[29],tauw.x.values[1]] # values are different than when
+ # simulation last ran (before installing XCALibre as dev), seem to be off by an order of 10 
 
- plot(x, tauw.x.values/(0.5*velocity[1]^2))
+ plot(x, tauw.x.values/(0.5*velocity[1]^2)) # Cf plot seems to show same error, with values off by order of 10
