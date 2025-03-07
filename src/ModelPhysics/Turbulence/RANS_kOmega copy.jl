@@ -176,7 +176,7 @@ function turbulence!(
     
     @. Pω.values = rho.values*coeffs.α1*Pk.values
     @. Pk.values = rho.values*nut.values*Pk.values
-    correct_production!(Pk, k.BCs, model, S.gradU, config) # Must be after previous line
+    #correct_production!(Pk, k.BCs, model, S.gradU, config) # Must be after previous line
     @. Dωf.values = rho.values*coeffs.β1*omega.values
     @. mueffω.values = rhof.values * (nuf.values + coeffs.σω*nutf.values)
     @. Dkf.values = rho.values*coeffs.β⁺*omega.values
