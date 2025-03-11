@@ -27,6 +27,7 @@ struct KOmega{S1,S2,S3,F1,F2,F3,C} <: AbstractRANSModel
     omegaf::F2
     nutf::F3
     coeffs::C
+    # JL: add Pk field here
 end
 Adapt.@adapt_structure KOmega
 
@@ -53,6 +54,7 @@ end
     omegaf = FaceScalarField(mesh)
     nutf = FaceScalarField(mesh)
     coeffs = rans.args
+    # JL: create Pk here
     KOmega(k, omega, nut, kf, omegaf, nutf, coeffs)
 end
 
@@ -79,7 +81,7 @@ function initialise(
     turbulence::KOmega, model::Physics{T,F,M,Tu,E,D,BI}, mdotf, peqn, config
     ) where {T,F,M,Tu,E,D,BI}
 
-    (; k, omega, nut) = turbulence
+    (; k, omega, nut) = turbulence # also have to extract Pk here
     (; rho) = model.fluid
     (; solvers, schemes, runtime) = config
     mesh = mdotf.mesh
@@ -90,7 +92,7 @@ function initialise(
     mueffω = FaceScalarField(mesh)
     Dkf = ScalarField(mesh)
     Dωf = ScalarField(mesh)
-    Pk = ScalarField(mesh)
+    Pk = ScalarField(mesh) # remove this
     Pω = ScalarField(mesh)
     
     k_eqn = (
@@ -152,7 +154,7 @@ function turbulence!(
     mesh = model.domain
     
     (; rho, rhof, nu, nuf) = model.fluid
-    (;k, omega, nut, kf, omegaf, nutf, coeffs) = model.turbulence
+    (;k, omega, nut, kf, omegaf, nutf, coeffs) = model.turbulence # extract Pk here
     (; U, Uf, gradU) = S
     (;k_eqn, ω_eqn, state) = rans
     (; solvers, runtime) = config
@@ -185,7 +187,7 @@ function turbulence!(
     # Solve omega equation
     # prev .= omega.values
     discretise!(ω_eqn, omega, config)
-    apply_boundary_conditions!(ω_eqn, omega.BCs, nothing, time, config)
+    apply_boundary_conditions!(ω_eqn, omega.BCs, nothing, time, config)  #  JL: this is where code will be injected
     # implicit_relaxation!(ω_eqn, omega.values, solvers.omega.relax, nothing, config)
     implicit_relaxation_diagdom!(ω_eqn, omega.values, solvers.omega.relax, nothing, config)
     constrain_equation!(ω_eqn, omega.BCs, model, config) # active with WFs only
@@ -199,7 +201,7 @@ function turbulence!(
     # Solve k equation
     # prev .= k.values
     discretise!(k_eqn, k, config)
-    apply_boundary_conditions!(k_eqn, k.BCs, nothing, time, config)
+    apply_boundary_conditions!(k_eqn, k.BCs, nothing, time, config) # JL: this is where code will be injected
     # implicit_relaxation!(k_eqn, k.values, solvers.k.relax, nothing, config)
     implicit_relaxation_diagdom!(k_eqn, k.values, solvers.k.relax, nothing, config)
     update_preconditioner!(k_eqn.preconditioner, mesh, config)

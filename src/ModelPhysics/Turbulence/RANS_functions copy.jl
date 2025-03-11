@@ -237,7 +237,8 @@ end
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
         BC = BCs[i]
-        if BC <: KWallFunction
+        if BC <: KWallFunction # again, could i just add an additional if statement here to call 
+            # the set produciton if the NN BC is used?
             call = quote
                 set_production!(P, fieldBCs[$i], model, gradU, config)
             end
@@ -290,10 +291,10 @@ end
     nuc = nu[cID]
     (; delta, normal)= face
     uStar = cmu^0.25*sqrt(k[cID])
-    dUdy = uStar/(kappa*delta)
+    dUdy = uStar/(kappa*delta) # could i just put an if loop before this, relating to the BC?
     yplus = y_plus(k[cID], nuc, delta, cmu)
     nutw = nut_wall(nuc, yplus, kappa, E)
-    mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
+    mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal)) # JL: need to verify why this is being done
     # mag_grad_U = mag(gradU[cID]*normal)
     if yplus > yPlusLam
         values[cID] = (nu[cID] + nutw)*mag_grad_U*dUdy # JL: need to find a way to obtain gradient of NN and scale it to dUdy
