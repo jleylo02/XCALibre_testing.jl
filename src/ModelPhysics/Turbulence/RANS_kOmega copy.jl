@@ -19,15 +19,15 @@ kOmega model containing all kOmega field parameters.
 - 'coeffs' -- Model coefficients.
 
 """
-struct KOmega{S1,S2,S3,F1,F2,F3,C} <: AbstractRANSModel
+struct KOmega{S1,S2,S3,S4,F1,F2,F3,C} <: AbstractRANSModel
     k::S1
     omega::S2
     nut::S3
+    Pk::S4
     kf::F1
     omegaf::F2
     nutf::F3
     coeffs::C
-    # JL: add Pk field here
 end
 Adapt.@adapt_structure KOmega
 
@@ -50,12 +50,12 @@ end
     k = ScalarField(mesh)
     omega = ScalarField(mesh)
     nut = ScalarField(mesh)
+    Pk = ScalarField(mesh) # JL: create Pk here
     kf = FaceScalarField(mesh)
     omegaf = FaceScalarField(mesh)
     nutf = FaceScalarField(mesh)
     coeffs = rans.args
-    # JL: create Pk here
-    KOmega(k, omega, nut, kf, omegaf, nutf, coeffs)
+    KOmega(k, omega, nut, kf, omegaf, nutf, Pk, coeffs)
 end
 
 # Model initialisation
@@ -81,7 +81,7 @@ function initialise(
     turbulence::KOmega, model::Physics{T,F,M,Tu,E,D,BI}, mdotf, peqn, config
     ) where {T,F,M,Tu,E,D,BI}
 
-    (; k, omega, nut) = turbulence # also have to extract Pk here
+    (; k, omega, nut, Pk) = turbulence # JL: also have to extract Pk here
     (; rho) = model.fluid
     (; solvers, schemes, runtime) = config
     mesh = mdotf.mesh
@@ -92,7 +92,7 @@ function initialise(
     mueffω = FaceScalarField(mesh)
     Dkf = ScalarField(mesh)
     Dωf = ScalarField(mesh)
-    Pk = ScalarField(mesh) # remove this
+    #Pk = ScalarField(mesh) # JL: remove this
     Pω = ScalarField(mesh)
     
     k_eqn = (
@@ -154,7 +154,7 @@ function turbulence!(
     mesh = model.domain
     
     (; rho, rhof, nu, nuf) = model.fluid
-    (;k, omega, nut, kf, omegaf, nutf, coeffs) = model.turbulence # extract Pk here
+    (;k, omega, nut, Pk, kf, omegaf, nutf, coeffs) = model.turbulence # JL: extract Pk here
     (; U, Uf, gradU) = S
     (;k_eqn, ω_eqn, state) = rans
     (; solvers, runtime) = config
