@@ -53,7 +53,7 @@ y_plus(k, nu, y, cmu) = cmu^0.25*y*sqrt(k)/nu
 sngrad(Ui, Uw, delta, normal) = begin
     Udiff = (Ui - Uw)
     Up = Udiff - (Udiff⋅normal)*normal # parallel velocity difference
-    grad = Up/delta
+    grad = Up/delta # delta = yp (distance from wall to cell centroid)
     return grad
 end
 
@@ -232,6 +232,8 @@ end
     end
 end
 
+correct_production!(Pk, k.BCs, model, S.gradU, config)
+
 @generated correct_production!(P, fieldBCs, model, gradU, config) = begin
     BCs = fieldBCs.parameters
     func_calls = Expr[]
@@ -291,10 +293,10 @@ end
     nuc = nu[cID]
     (; delta, normal)= face
     uStar = cmu^0.25*sqrt(k[cID])
-    dUdy = uStar/(kappa*delta) # could i just put an if loop before this, relating to the BC?
+    dUdy = uStar/(kappa*delta)
     yplus = y_plus(k[cID], nuc, delta, cmu)
     nutw = nut_wall(nuc, yplus, kappa, E)
-    mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal)) # JL: need to verify why this is being done
+    mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal)) # JL: I think this is calculating the gradient of the parallel velocity at the cell centroid
     # mag_grad_U = mag(gradU[cID]*normal)
     if yplus > yPlusLam
         values[cID] = (nu[cID] + nutw)*mag_grad_U*dUdy # JL: need to find a way to obtain gradient of NN and scale it to dUdy
