@@ -370,3 +370,88 @@ end
         values[fID] = 0.0
     end
 end
+
+# JL: Initial Neural Network BC integration 
+
+struct WallNormNN{I,O,N,T} <: XCALibreUserFunctor
+    input::I # vector to hold input yplus value
+    output::O # vector to hold network prediction
+    # additional output gradient
+    network::N # neural network
+    steady::T
+    #does the Pk = model.turbulence.Pk go here? 
+    #create gradient field which holds gradient function
+end
+Adapt.@adapt_structure WallNormNN
+
+
+XCALibre.Discretise.update_user_boundary!(
+    BC::DirichletFunction{I}, P, BC, model,config 
+    ) where{I <:WallNormNN} =
+begin
+    # backend = _get_backend(mesh)
+    (; hardware) = config
+    (; backend, workgroup) = hardware
+    
+    # Deconstruct mesh to required fields
+    mesh = model.domain
+    (; faces, boundary_cellsID, boundaries) = mesh
+
+    # Extract physics models
+    (; fluid, momentum, turbulence) = model
+
+    # facesID_range = get_boundaries(BC, boundaries)
+    boundaries_cpu = get_boundaries(boundaries)
+    facesID_range = boundaries_cpu[BC.ID].IDs_range
+    start_ID = facesID_range[1]
+
+    # Execute apply boundary conditions kernel
+    kernel! = _update_user_boundary!(backend, workgroup)
+    kernel!(
+        P.values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID, gradU, ndrange=length(facesID_range)
+    )
+
+    correct_production!(Pk, k.BCs, model, S.gradU, config) # need to change the arguments in this
+    
+    (; output, input, network) = BC.value
+    output = network(input) 
+end
+
+# Using Flux NN
+@kernel function _update_user_boundary!(values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID)
+        i = @index(Global)
+        fID = i + start_ID - 1 # Redefine thread index to become face ID
+    
+        (; input, output, cmu, B, E, yPlusLam) = BC.value
+        (; nu) = fluid
+        (; U) = momentum
+        (; k, nut) = turbulence
+    
+        using Flux, Zygote
+        using BSON: @load
+        @load "WallNormNN.bson" network
+        @load "NNmean.bson" data_mean
+        @load "NNstd.bson" data_std 
+
+        Uw = SVector{3}(0.0,0.0,0.0)
+        cID = boundary_cellsID[fID]
+        face = faces[fID]
+        nuc = nu[cID]
+        (; delta, normal)= face
+        #uStar = cmu^0.25*sqrt(k[cID])
+        #dUdy = uStar/(kappa*delta)
+        yplus = y_plus(k[cID], nuc, delta, cmu)
+        BC.value.input = (yplus .- data_mean) ./ data_std
+
+        # calcualte gradient du+/dy+
+        compute_gradient(y) = Zygote.gradient(x -> network(x)[1], y)[1] # needs to be Zygote.jacobian for Lux model
+        # for loop to calculate gradient for all values in input
+        grad_dUpdyp = [compute_gradient(BC.value.input[:, i]) for i in 1:size(BC.value.input, 2)]
+        grad_dUpdyp = hcat(grad_dUpdyp...)
+        
+        dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*grad_dUpdyp
+        nutw = nuc*(BC.value.input/BC.value.output)
+        mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
+        values[cID] = (nutw)*mag_grad_U*dUdy 
+    end
+end
