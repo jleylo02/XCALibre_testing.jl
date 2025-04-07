@@ -373,14 +373,13 @@ end
 
 # JL: Initial Neural Network BC integration 
 
-struct WallNormNN{I,O,N,T} <: XCALibreUserFunctor
+struct WallNormNN{I,O,G,N,T} <: XCALibreUserFunctor
     input::I # vector to hold input yplus value
     output::O # vector to hold network prediction
-    # additional output gradient
+    gradient::G # vector to hold scaled gradient
     network::N # neural network
     steady::T
     #does the Pk = model.turbulence.Pk go here? 
-    #create gradient field which holds gradient function
 end
 Adapt.@adapt_structure WallNormNN
 
@@ -454,4 +453,3 @@ end
         mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
         values[cID] = (nutw)*mag_grad_U*dUdy 
     end
-end
