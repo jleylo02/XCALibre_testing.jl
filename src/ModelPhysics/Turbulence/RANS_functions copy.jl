@@ -52,8 +52,8 @@ y_plus(k, nu, y, cmu) = cmu^0.25*y*sqrt(k)/nu
 
 sngrad(Ui, Uw, delta, normal) = begin
     Udiff = (Ui - Uw)
-    Up = Udiff - (Udiff⋅normal)*normal # parallel velocity difference
-    grad = Up/delta # delta = yp (distance from wall to cell centroid)
+    Up = Udiff - (Udiff⋅normal)*normal 
+    grad = Up/delta 
     return grad
 end
 
@@ -239,8 +239,7 @@ correct_production!(Pk, k.BCs, model, S.gradU, config)
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
         BC = BCs[i]
-        if BC <: KWallFunction # again, could i just add an additional if statement here to call 
-            # the set produciton if the NN BC is used?
+        if BC <: KWallFunction 
             call = quote
                 set_production!(P, fieldBCs[$i], model, gradU, config)
             end
@@ -296,10 +295,10 @@ end
     dUdy = uStar/(kappa*delta)
     yplus = y_plus(k[cID], nuc, delta, cmu)
     nutw = nut_wall(nuc, yplus, kappa, E)
-    mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal)) # JL: I think this is calculating the gradient of the parallel velocity at the cell centroid
+    mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal)) 
     # mag_grad_U = mag(gradU[cID]*normal)
     if yplus > yPlusLam
-        values[cID] = (nu[cID] + nutw)*mag_grad_U*dUdy # JL: need to find a way to obtain gradient of NN and scale it to dUdy
+        values[cID] = (nu[cID] + nutw)*mag_grad_U*dUdy 
     else
         values[cID] = 0.0
     end
@@ -379,7 +378,6 @@ struct WallNormNN{I,O,G,N,T} <: XCALibreUserFunctor
     gradient::G # vector to hold scaled gradient
     network::N # neural network
     steady::T
-    #does the Pk = model.turbulence.Pk go here? 
 end
 Adapt.@adapt_structure WallNormNN
 
@@ -412,8 +410,9 @@ begin
 
     correct_production!(Pk, k.BCs, model, S.gradU, config) # need to change the arguments in this
     
-    (; output, input, network) = BC.value
+    (; output, input, network, gradient) = BC.value
     output = network(input) 
+    Pk = model.turbulence.Pk
 end
 
 # Using Flux NN
@@ -445,11 +444,11 @@ end
         # calcualte gradient du+/dy+
         compute_gradient(y) = Zygote.gradient(x -> network(x)[1], y)[1] # needs to be Zygote.jacobian for Lux model
         # for loop to calculate gradient for all values in input
-        grad_dUpdyp = [compute_gradient(BC.value.input[:, i]) for i in 1:size(BC.value.input, 2)]
-        grad_dUpdyp = hcat(grad_dUpdyp...)
+        BC.value.gradient = [compute_gradient(BC.value.input[:, i]) for i in 1:size(BC.value.input, 2)]
+        BC.value.gradient = hcat(BC.value.gradient...)
         
-        dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*grad_dUpdyp
+        dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*BC.value.gradient
         nutw = nuc*(BC.value.input/BC.value.output)
         mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
-        values[cID] = (nutw)*mag_grad_U*dUdy 
+        values[cID] = (nutw)*mag_grad_U*dUdy # corrected Pk
     end
