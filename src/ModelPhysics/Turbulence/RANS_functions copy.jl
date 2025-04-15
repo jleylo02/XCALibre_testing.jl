@@ -381,11 +381,14 @@ struct WallNormNN{I,O,G,N,T} <: XCALibreUserFunctor
 end
 Adapt.@adapt_structure WallNormNN
 
+using BSON: @save
+@save "WallNormNN_Flux.bson" model
+@save "NNmean.bson" data_mean
+@save "NNstd.bson" data_std
 
 XCALibre.Discretise.update_user_boundary!(
     BC::DirichletFunction{I}, P, BC, model,config 
-    ) where{I <:WallNormNN} =
-begin
+    ) where{I <:WallNormNN} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware
@@ -402,17 +405,20 @@ begin
     facesID_range = boundaries_cpu[BC.ID].IDs_range
     start_ID = facesID_range[1]
 
+
+
+    (; output, input, network, gradient) = BC.value
+    output = network(input) 
+    Pk = model.turbulence.Pk
+
     # Execute apply boundary conditions kernel
     kernel! = _update_user_boundary!(backend, workgroup)
     kernel!(
         P.values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID, gradU, ndrange=length(facesID_range)
     )
 
-    correct_production!(Pk, k.BCs, model, S.gradU, config) # need to change the arguments in this
+    #correct_production!(Pk, k.BCs, model, S.gradU, config) # need to change the arguments in this
     
-    (; output, input, network, gradient) = BC.value
-    output = network(input) 
-    Pk = model.turbulence.Pk
 end
 
 # Using Flux NN
@@ -425,12 +431,6 @@ end
         (; U) = momentum
         (; k, nut) = turbulence
     
-        using Flux, Zygote
-        using BSON: @load
-        @load "WallNormNN.bson" network
-        @load "NNmean.bson" data_mean
-        @load "NNstd.bson" data_std 
-
         Uw = SVector{3}(0.0,0.0,0.0)
         cID = boundary_cellsID[fID]
         face = faces[fID]
