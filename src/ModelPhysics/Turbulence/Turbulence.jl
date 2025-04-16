@@ -23,6 +23,7 @@ include("RANS_tensor_algebra.jl")
 include("RANS_laminar.jl")
 include("RANS_kOmega.jl")
 include("RANS_kOmegaLKE.jl")
+include("RANS_kOmegaNN.jl")
 
 # LES models
 include("LES_functions.jl")

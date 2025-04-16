@@ -1,13 +1,13 @@
-export KOmega
+export KOmegaNN
 
 # Reference:
 # Wilcox, D. C., Turbulence Modeling for CFD, 2nd edition, DCW Industries, Inc., La Canada CA, 1998
 
 # Model type definition
 """
-    KOmega <: AbstractTurbulenceModel
+    KOmegaNN <: AbstractTurbulenceModel
 
-kOmega model containing all kOmega field parameters.
+KOmegaNN model containing all KOmegaNN field parameters.
 
 ### Fields
 - 'k' -- Turbulent kinetic energy ScalarField.
@@ -19,7 +19,7 @@ kOmega model containing all kOmega field parameters.
 - 'coeffs' -- Model coefficients.
 
 """
-struct KOmega{S1,S2,S3,S4,F1,F2,F3,C} <: AbstractRANSModel
+struct KOmegaNN{S1,S2,S3,S4,F1,F2,F3,C} <: AbstractRANSModel
     k::S1
     omega::S2
     nut::S3
@@ -29,24 +29,24 @@ struct KOmega{S1,S2,S3,S4,F1,F2,F3,C} <: AbstractRANSModel
     nutf::F3
     coeffs::C
 end
-Adapt.@adapt_structure KOmega
+Adapt.@adapt_structure KOmegaNN
 
-struct KOmegaModel{E1,E2,S1}
+struct KOmegaNNModel{E1,E2,S1}
     k_eqn::E1 
     ω_eqn::E2
     state::S1
 end
-Adapt.@adapt_structure KOmegaModel
+Adapt.@adapt_structure KOmegaModelNN
 
 # Model API constructor (pass user input as keyword arguments and process as needed)
-RANS{KOmega}(; β⁺=0.09, α1=0.52, β1=0.072, σk=0.5, σω=0.5) = begin 
+RANS{KOmegaNN}(; β⁺=0.09, α1=0.52, β1=0.072, σk=0.5, σω=0.5) = begin 
     coeffs = (β⁺=β⁺, α1=α1, β1=β1, σk=σk, σω=σω)
     ARG = typeof(coeffs)
-    RANS{KOmega,ARG}(coeffs)
+    RANS{KOmegaNN,ARG}(coeffs)
 end
 
 # Functor as constructor (internally called by Physics API): Returns fields and user data
-(rans::RANS{KOmega, ARG})(mesh) where ARG = begin
+(rans::RANS{KOmegaNN, ARG})(mesh) where ARG = begin
     k = ScalarField(mesh)
     omega = ScalarField(mesh)
     nut = ScalarField(mesh)
@@ -55,12 +55,12 @@ end
     omegaf = FaceScalarField(mesh)
     nutf = FaceScalarField(mesh)
     coeffs = rans.args
-    KOmega(k, omega, nut, kf, omegaf, nutf, Pk, coeffs)
+    KOmegaNN(k, omega, nut, kf, omegaf, nutf, Pk, coeffs)
 end
 
 # Model initialisation
 """
-    initialise(turbulence::KOmega, model::Physics{T,F,M,Tu,E,D,BI}, mdotf, peqn, config
+    initialise(turbulence::KOmegaNN, model::Physics{T,F,M,Tu,E,D,BI}, mdotf, peqn, config
     ) where {T,F,M,Tu,E,D,BI}
 
 Initialisation of turbulent transport equations.
@@ -74,11 +74,11 @@ Initialisation of turbulent transport equations.
           hardware structures set.
 
 ### Output
-- `KOmegaModel(k_eqn, ω_eqn)`  -- Turbulence model structure.
+- `KOmegaNNModel(k_eqn, ω_eqn)`  -- Turbulence model structure.
 
 """
 function initialise(
-    turbulence::KOmega, model::Physics{T,F,M,Tu,E,D,BI}, mdotf, peqn, config
+    turbulence::KOmegaNN, model::Physics{T,F,M,Tu,E,D,BI}, mdotf, peqn, config
     ) where {T,F,M,Tu,E,D,BI}
 
     (; k, omega, nut, Pk) = turbulence # JL: also have to extract Pk here
@@ -127,18 +127,18 @@ function initialise(
     @reset ω_eqn.solver = solvers.omega.solver(_A(ω_eqn), _b(ω_eqn))
 
     initial_residual = ((:k, 1.0),(:omega, 1.0))
-    return KOmegaModel(k_eqn, ω_eqn, ModelState(initial_residual, false))
+    return KOmegaNNModel(k_eqn, ω_eqn, ModelState(initial_residual, false))
 end
 
 # Model solver call (implementation)
 """
-    turbulence!(rans::KOmegaModel{E1,E2,S1}, model::Physics{T,F,M,Tu,E,D,BI}, S, prev, time, config
-    ) where {T,F,M,Tu<:KOmega,E,D,BI,E1,E2,S1}
+    turbulence!(rans::KOmegaNNModel{E1,E2,S1}, model::Physics{T,F,M,Tu,E,D,BI}, S, prev, time, config
+    ) where {T,F,M,Tu<:KOmegaNN,E,D,BI,E1,E2,S1}
 
 Run turbulence model transport equations.
 
 ### Input
-- `rans::KOmegaModel{E1,E2,S1}` -- KOmega turbulence model.
+- `rans::KOmegaNNModel{E1,E2,S1}` -- KOmegaNN turbulence model.
 - `model`  -- Physics model defined by user.
 - `S`   -- Strain rate tensor.
 - `prev`  -- Previous field.
@@ -148,7 +148,7 @@ Run turbulence model transport equations.
 
 """
 function turbulence!(
-    rans::KOmegaModel{E1,E2,S1}, model::Physics{T,F,M,Tu,E,D,BI}, S, prev, time, config
+    rans::KOmegaNNModel{E1,E2,S1}, model::Physics{T,F,M,Tu,E,D,BI}, S, prev, time, config
     ) where {T,F,M,Tu<:AbstractTurbulenceModel,E,D,BI,E1,E2,S1}
 
     mesh = model.domain
@@ -222,7 +222,7 @@ end
 
 # Specialise VTK writer
 function model2vtk(model::Physics{T,F,M,Tu,E,D,BI}, VTKWriter, name
-    ) where {T,F,M,Tu<:KOmega,E,D,BI}
+    ) where {T,F,M,Tu<:KOmegaNN,E,D,BI}
     if typeof(model.fluid)<:AbstractCompressible
         args = (
             ("U", model.momentum.U), 
