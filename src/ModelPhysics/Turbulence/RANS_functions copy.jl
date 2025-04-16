@@ -52,8 +52,8 @@ y_plus(k, nu, y, cmu) = cmu^0.25*y*sqrt(k)/nu
 
 sngrad(Ui, Uw, delta, normal) = begin
     Udiff = (Ui - Uw)
-    Up = Udiff - (Udiff⋅normal)*normal # parallel velocity difference
-    grad = Up/delta
+    Up = Udiff - (Udiff⋅normal)*normal 
+    grad = Up/delta 
     return grad
 end
 
@@ -232,12 +232,14 @@ end
     end
 end
 
+correct_production!(Pk, k.BCs, model, S.gradU, config)
+
 @generated correct_production!(P, fieldBCs, model, gradU, config) = begin
     BCs = fieldBCs.parameters
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
         BC = BCs[i]
-        if BC <: KWallFunction
+        if BC <: KWallFunction 
             call = quote
                 set_production!(P, fieldBCs[$i], model, gradU, config)
             end
@@ -284,8 +286,7 @@ end
     (; U) = momentum
     (; k, nut) = turbulence
 
-    # Uw = SVector{3}(0.0,0.0,0.0)
-    Uw = U.BCs[BC.ID].value
+    Uw = SVector{3}(0.0,0.0,0.0)
     cID = boundary_cellsID[fID]
     face = faces[fID]
     nuc = nu[cID]
@@ -294,10 +295,10 @@ end
     dUdy = uStar/(kappa*delta)
     yplus = y_plus(k[cID], nuc, delta, cmu)
     nutw = nut_wall(nuc, yplus, kappa, E)
-    mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
+    mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal)) 
     # mag_grad_U = mag(gradU[cID]*normal)
     if yplus > yPlusLam
-        values[cID] = (nu[cID] + nutw)*mag_grad_U*dUdy # JL: need to find a way to obtain gradient of NN and scale it to dUdy
+        values[cID] = (nu[cID] + nutw)*mag_grad_U*dUdy 
     else
         values[cID] = 0.0
     end
@@ -368,3 +369,5 @@ end
         values[fID] = 0.0
     end
 end
+
+# JL: Initial Neural Network BC integration 
