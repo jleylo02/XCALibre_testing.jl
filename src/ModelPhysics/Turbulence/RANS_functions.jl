@@ -297,7 +297,7 @@ end
     mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
     # mag_grad_U = mag(gradU[cID]*normal)
     if yplus > yPlusLam
-        values[cID] = (nu[cID] + nutw)*mag_grad_U*dUdy # JL: need to find a way to obtain gradient of NN and scale it to dUdy
+        values[cID] = (nu[cID] + nutw)*mag_grad_U*dUdy 
     else
         values[cID] = 0.0
     end

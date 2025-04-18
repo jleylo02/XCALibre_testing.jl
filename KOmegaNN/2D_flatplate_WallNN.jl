@@ -79,7 +79,7 @@ XCALibre.Discretise.update_user_boundary!(
 end
 
 # Using Flux NN
-@kernel function _update_user_boundary!(values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID)
+@kernel function _update_user_boundary!(values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID) # arguments defined in the struct need to go here also
         i = @index(Global)
         fID = i + start_ID - 1 # Redefine thread index to become face ID
     
@@ -88,7 +88,7 @@ end
         (; U) = momentum
         (; k, nut) = turbulence
     
-        Uw = SVector{3}(0.0,0.0,0.0)
+        Uw = U.BCs[BC.ID].value # JL: recently changed
         cID = boundary_cellsID[fID]
         face = faces[fID]
         nuc = nu[cID]
