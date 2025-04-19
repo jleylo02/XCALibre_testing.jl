@@ -31,12 +31,13 @@ struct KOmegaNN{S1,S2,S3,S4,F1,F2,F3,C} <: AbstractRANSModel
 end
 Adapt.@adapt_structure KOmegaNN
 
-struct KOmegaNNModel{E1,E2,S1}
+struct KOmegaNNModel{T,E1,E2,S1}
+    turbulence::T
     k_eqn::E1 
     ω_eqn::E2
     state::S1
 end
-Adapt.@adapt_structure KOmegaModelNN
+Adapt.@adapt_structure KOmegaNNModel
 
 # Model API constructor (pass user input as keyword arguments and process as needed)
 RANS{KOmegaNN}(; β⁺=0.09, α1=0.52, β1=0.072, σk=0.5, σω=0.5) = begin 
@@ -55,7 +56,7 @@ end
     omegaf = FaceScalarField(mesh)
     nutf = FaceScalarField(mesh)
     coeffs = rans.args
-    KOmegaNN(k, omega, nut, kf, omegaf, nutf, Pk, coeffs)
+    KOmegaNN(k, omega, nut, Pk, kf, omegaf, nutf, coeffs)
 end
 
 # Model initialisation
@@ -127,7 +128,7 @@ function initialise(
     @reset ω_eqn.solver = solvers.omega.solver(_A(ω_eqn), _b(ω_eqn))
 
     initial_residual = ((:k, 1.0),(:omega, 1.0))
-    return KOmegaNNModel(k_eqn, ω_eqn, ModelState(initial_residual, false))
+    return KOmegaNNModel(turbulence, k_eqn, ω_eqn, ModelState(initial_residual, false))
 end
 
 # Model solver call (implementation)
@@ -148,13 +149,13 @@ Run turbulence model transport equations.
 
 """
 function turbulence!(
-    rans::KOmegaNNModel{E1,E2,S1}, model::Physics{T,F,M,Tu,E,D,BI}, S, prev, time, config
+    rans::KOmegaNNModel, model::Physics{T,F,M,Tu,E,D,BI}, S, prev, time, config
     ) where {T,F,M,Tu<:AbstractTurbulenceModel,E,D,BI,E1,E2,S1}
 
     mesh = model.domain
     
     (; rho, rhof, nu, nuf) = model.fluid
-    (;k, omega, nut, Pk, kf, omegaf, nutf, coeffs) = model.turbulence # JL: extract Pk here
+    (;k, omega, nut, Pk, kf, omegaf, nutf, coeffs) = rans.turbulence # JL: extract Pk here
     (; U, Uf, gradU) = S
     (;k_eqn, ω_eqn, state) = rans
     (; solvers, runtime) = config
@@ -187,7 +188,7 @@ function turbulence!(
     # Solve omega equation
     # prev .= omega.values
     discretise!(ω_eqn, omega, config)
-    apply_boundary_conditions!(ω_eqn, omega.BCs, nothing, time, config)  #  JL: this is where code will be injected
+    apply_boundary_conditions!(ω_eqn, omega.BCs, nothing, time, config)  
     # implicit_relaxation!(ω_eqn, omega.values, solvers.omega.relax, nothing, config)
     implicit_relaxation_diagdom!(ω_eqn, omega.values, solvers.omega.relax, nothing, config)
     constrain_equation!(ω_eqn, omega.BCs, model, config) # active with WFs only
@@ -221,7 +222,7 @@ function turbulence!(
 end
 
 # Specialise VTK writer
-function model2vtk(model::Physics{T,F,M,Tu,E,D,BI}, VTKWriter, name
+function save_output(model::Physics{T,F,M,Tu,E,D,BI}, outputWriter, iteration
     ) where {T,F,M,Tu<:KOmegaNN,E,D,BI}
     if typeof(model.fluid)<:AbstractCompressible
         args = (
@@ -230,7 +231,8 @@ function model2vtk(model::Physics{T,F,M,Tu,E,D,BI}, VTKWriter, name
             ("T", model.energy.T),
             ("k", model.turbulence.k),
             ("omega", model.turbulence.omega),
-            ("nut", model.turbulence.nut)
+            ("nut", model.turbulence.nut),
+            ("Pk", model.turbulence.Pk)
         )
     else
         args = (
@@ -238,8 +240,9 @@ function model2vtk(model::Physics{T,F,M,Tu,E,D,BI}, VTKWriter, name
             ("p", model.momentum.p),
             ("k", model.turbulence.k),
             ("omega", model.turbulence.omega),
-            ("nut", model.turbulence.nut)
+            ("nut", model.turbulence.nut),
+            ("Pk", model.turbulence.Pk)
         )
     end
-    write_vtk(name, model.domain, VTKWriter, args...)
+    write_results(iteration, model.domain, outputWriter, args...)
 end
