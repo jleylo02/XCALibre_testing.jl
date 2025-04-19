@@ -65,8 +65,8 @@ XCALibre.Discretise.update_user_boundary!(
     # calcualte gradient du+/dy+
     compute_gradient(y) = Zygote.gradient(x -> network(x)[1], y)[1] # needs to be Zygote.jacobian for Lux model
     # for loop to calculate gradient for all values in input
-    BC.value.gradient = [compute_gradient(BC.value.input[:, i]) for i in 1:size(BC.value.input, 2)]
-    BC.value.gradient = hcat(BC.value.gradient...)
+    gradient = [compute_gradient(input[:, i]) for i in 1:size(input, 2)]
+    gradient = hcat(gradient...)
 
     # Execute apply boundary conditions kernel
     kernel! = _update_user_boundary!(backend, workgroup)
@@ -74,7 +74,7 @@ XCALibre.Discretise.update_user_boundary!(
         P.values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID, gradU, ndrange=length(facesID_range)
     )
 
-    #correct_production!(Pk, k.BCs, model, S.gradU, config) # need to change the arguments in this
+    correct_production!(Pk, k.BCs, model, S.gradU, config) # need to change the arguments in this
     
 end
 
