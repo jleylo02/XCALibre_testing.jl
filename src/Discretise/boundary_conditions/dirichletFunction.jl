@@ -42,7 +42,7 @@ function fixedValue(BC::DirichletFunction, ID::I, value::V) where {I<:Integer,V}
     end
 end
 
-@define_boundary DirichletFunction Laplacian{Linear} begin
+@define_boundary DirichletFunction Laplacian{Linear} VectorField begin
     J = term.flux[fID]
     (; area, delta, centre) = face 
     flux = J*area/delta
@@ -52,21 +52,21 @@ end
     ap, ap*value
 end
 
-@define_boundary DirichletFunction Divergence{Linear} begin
+@define_boundary DirichletFunction Divergence{Linear} VectorField begin
     flux = -term.flux[fID]
     ap = term.sign*(flux)
     value = bc.value(face.centre, time, i)[component.value]
     0.0, ap*value
 end
 
-@define_boundary DirichletFunction Divergence{Upwind} begin
+@define_boundary DirichletFunction Divergence{Upwind} VectorField begin
     flux = -term.flux[fID]
     ap = term.sign*(flux)
     value = bc.value(face.centre, time, i)[component.value]
     0.0, ap*value
 end
 
-@define_boundary DirichletFunction Divergence{BoundedUpwind} begin
+@define_boundary DirichletFunction Divergence{BoundedUpwind} VectorField begin
     flux = -term.flux[fID]
     ap = term.sign*(flux)
     value = bc.value(face.centre, time, i)[component.value]
@@ -75,4 +75,35 @@ end
 
 @define_boundary DirichletFunction Si begin
     0.0, 0.0
+end
+
+@define_boundary DirichletFunction Laplacian{Linear} ScalarField begin
+    J = term.flux[fID]
+    (; area, delta, centre) = face 
+    flux = J*area/delta
+    ap = term.sign*(-flux)
+    # bc.value.update!(bc.value, centre, time, i)
+    value = bc.value(centre, time, i)
+    ap, ap*value
+end
+
+@define_boundary DirichletFunction Divergence{Linear} ScalarField begin
+    flux = -term.flux[fID]
+    ap = term.sign*(flux)
+    value = bc.value(face.centre, time, i)
+    0.0, ap*value
+end
+
+@define_boundary DirichletFunction Divergence{Upwind} ScalarField begin
+    flux = -term.flux[fID]
+    ap = term.sign*(flux)
+    value = bc.value(face.centre, time, i)
+    0.0, ap*value
+end
+
+@define_boundary DirichletFunction Divergence{BoundedUpwind} ScalarField begin
+    flux = -term.flux[fID]
+    ap = term.sign*(flux)
+    value = bc.value(face.centre, time, i)
+    flux, ap*value
 end
