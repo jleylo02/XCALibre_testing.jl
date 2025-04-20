@@ -24,22 +24,22 @@ k_inlet = 0.375
 ω_inlet = 1000
 
 ####################################################
-struct WallNormNN{I,O,G,N,T} <: XCALibreUserFunctor
+struct NNWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
     input::I # vector to hold input yplus value
     output::O # vector to hold network prediction
     gradient::G # vector to hold scaled gradient
     network::N # neural network
     steady::T
 end
-Adapt.@adapt_structure WallNormNN
+Adapt.@adapt_structure NNWallFunction
 
 @load "WallNormNN_Flux.bson" network
 @load "NNmean.bson" data_mean
 @load "NNstd.bson" data_std
 
 XCALibre.Discretise.update_user_boundary!(
-    BC::DirichletFunction{I,V}, P, model,config 
-    ) where{I,V <:WallNormNN} = begin
+    BC::DirichletFunction{I,V}, P, BC, eqn, model, config 
+    ) where{I,V <:NNWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware
@@ -56,7 +56,13 @@ XCALibre.Discretise.update_user_boundary!(
     facesID_range = boundaries_cpu[BC.ID].IDs_range
     start_ID = facesID_range[1]
 
-
+    # Access equation data and deconstruct sparse array
+    # JL: The arguments here need to be altered
+    A = _A(eqn)
+    b = _b(eqn, nothing)
+    colval = _colval(A)
+    rowptr = _rowptr(A)
+    nzval = _nzval(A)
 
     (; output, input, network, gradient) = BC.value
     output = network(input) 
@@ -74,7 +80,7 @@ XCALibre.Discretise.update_user_boundary!(
         P.values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID, gradU, ndrange=length(facesID_range)
     )
 
-    correct_production!(Pk, k.BCs, model, S.gradU, config) # need to change the arguments in this
+    #correct_production!(Pk, k.BCs, model, S.gradU, config) # need to change the arguments in this
     
 end
 
@@ -83,7 +89,7 @@ end
         i = @index(Global)
         fID = i + start_ID - 1 # Redefine thread index to become face ID
     
-        (; input, output, cmu, B, E, gradient) = BC.value
+        (; input, output, cmu, B, E, gradient) = BC.value # JL: looking at the KWallFunction struct definition, these values are defined here and exported, so would I have to do this in the above?
         (; nu) = fluid
         (; U) = momentum
         (; k, nut) = turbulence
@@ -102,25 +108,24 @@ end
         nutw = nuc*(BC.value.input/BC.value.output)
         mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
         values[cID] = (nutw)*mag_grad_U*dUdy # corrected Pk
+        # JL: based on conversation with Humberto, I think what needs to be done here is similar to the OmegaWallFunction:
+        # JL: need to alter this to update the Pk value that is used in the k equation (I think, need to sit and think about this)
+        # Classic approach
+        # b[cID] += A[cID,cID]*ωc
+        # A[cID,cID] += A[cID,cID]
+        
+        # nzIndex = spindex(rowptr, colval, cID, cID)
+        # Atomix.@atomic b[cID] += nzval[nzIndex]*ωc
+        # Atomix.@atomic nzval[nzIndex] += nzval[nzIndex] 
+
+        z = zero(eltype(nzval))
+        for nzi ∈ rowptr[cID]:(rowptr[cID+1] - 1)
+            nzval[nzi] = z
+        end
+        cIndex = spindex(rowptr, colval, cID, cID)
+        nzval[cIndex] = one(eltype(nzval))
+        b[cID] = ωc
     end
-## Only include this when testing ##
-WallNorm = WallNormNN(
-    input,
-    output,
-    gradient,
-    network,
-    true
-)
-
-WallNorm_dev = WallNorm
-
-# Initialize inputs
-input = zeros(Float32, size(data_mean, 1), 1)
-output = similar(input)
-gradient = similar(input)
-
-nn_bc = WallNormNN(input, output, gradient, network, true)
-############################################################
 
 model = Physics(
     time = Steady(),
