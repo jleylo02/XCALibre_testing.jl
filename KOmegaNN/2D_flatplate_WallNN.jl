@@ -38,8 +38,8 @@ Adapt.@adapt_structure WallNormNN
 @load "NNstd.bson" data_std
 
 XCALibre.Discretise.update_user_boundary!(
-    BC::DirichletFunction{I}, P, model,config 
-    ) where{I <:WallNormNN} = begin
+    BC::DirichletFunction{I,V}, P, model,config 
+    ) where{I,V <:WallNormNN} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware
