@@ -16,7 +16,7 @@ Adapt.@adapt_structure NNKWallFunction
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
         BC = BCs[i]
-        if BC <: DirichletFunction
+        if BC <: DirichletFunction # JL: This may have to change when new Neumann type is defined
             call = quote
                 update_user_boundary!() # JL: args here must mate those in the generated function
             end
@@ -30,8 +30,7 @@ Adapt.@adapt_structure NNKWallFunction
 end
 
 XCALibre.Discretise.update_user_boundary!(
-    BC::DirichletFunction{I,V}, P, BC, eqn, model, config # JL: need to change these arguments to be the same as in the update user boundary that we changed with humberto
-    ) where{I,V <:NNKWallFunction} = begin
+    BC::DirichletFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNKWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware
@@ -50,8 +49,8 @@ XCALibre.Discretise.update_user_boundary!(
 
     # Access equation data and deconstruct sparse array
     # JL: The arguments here need to be altered
-    A = _A(eqn)
-    b = _b(eqn, nothing)
+    A = _A(eqnModel)
+    b = _b(eqnModel, nothing)
     colval = _colval(A)
     rowptr = _rowptr(A)
     nzval = _nzval(A)
@@ -69,23 +68,18 @@ XCALibre.Discretise.update_user_boundary!(
 
     # Execute apply boundary conditions kernel
     kernel! = _update_user_boundary!(backend, workgroup)
-    kernel!(
-        P.values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID, gradU, ndrange=length(facesID_range) # JL: need to change these arguments to be the same as in the update user boundary that we changed with humberto
-    )
-
-    #correct_production!(Pk, k.BCs, model, S.gradU, config) # need to change the arguments in this
-    
+    kernel!(eqnModel, component, faces, cells, facesID_range, time, config)
 end
 
 # Using Flux NN
-@kernel function _update_user_boundary!(values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID) # JL: need to change these arguments to be the same as in the update user boundary that we changed with humberto
+@kernel function _update_user_boundary!(eqnModel, component, faces, cells, facesID_range, time, config)
         i = @index(Global)
         fID = i + start_ID - 1 # Redefine thread index to become face ID
     
-        #(; input, output, cmu, B, E, gradient) = BC.value # JL: looking at the KWallFunction struct definition, these values are defined here and exported, so would I have to do this in the above?
+        (; input, output, cmu, gradient) = BC.value 
         (; nu) = fluid
         (; U) = momentum
-        (; k, nut) = turbulence
+        (; k, Pk) = turbulence
     
         Uw = SVector{3}(0.0,0.0,0.0)
         cID = boundary_cellsID[fID]
@@ -103,23 +97,8 @@ end
         values[cID] = (nutw)*mag_grad_U*dUdy # corrected Pk
         # JL: based on conversation with Humberto, I think what needs to be done here is similar to the OmegaWallFunction:
         # JL: need to alter this to update the Pk value that is used in the k equation (I think, need to sit and think about this)
-        # Classic approach
-        # b[cID] += A[cID,cID]*ωc
-        # A[cID,cID] += A[cID,cID]
-        
-        # nzIndex = spindex(rowptr, colval, cID, cID)
-        # Atomix.@atomic b[cID] += nzval[nzIndex]*ωc
-        # Atomix.@atomic nzval[nzIndex] += nzval[nzIndex] 
 
-       # z = zero(eltype(nzval))
-        #for nzi ∈ rowptr[cID]:(rowptr[cID+1] - 1)
-         #   nzval[nzi] = z
-        #end
-        #cIndex = spindex(rowptr, colval, cID, cID)
-        ##nzval[cIndex] = one(eltype(nzval))
-        #b[cID] = ωc
-
-        b[cID] = b[cID] - pk[cID]*Volume + correctedVAlue*Volume # JL: this is what needs to be done once the model is passed
+        b[cID] = b[cID] - Pk[cID]*Volume + values[cID]*Volume # JL: this is what needs to be done once the model is passed
     end
 
 # JL: need to create the functor which assigns the values to the variables in the struct (see Inflow example)
