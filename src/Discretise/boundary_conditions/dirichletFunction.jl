@@ -77,7 +77,8 @@ end
     0.0, 0.0
 end
 
-@define_boundary DirichletFunction Laplacian{Linear} ScalarField begin
+@define_boundary DirichletFunction Laplacian{Linear} ScalarField begin # JL: modify this to behave like a Neumann function, or create a new Neumann user function. 
+# JL: need to define my own type to control what i can return
     J = term.flux[fID]
     (; area, delta, centre) = face 
     flux = J*area/delta

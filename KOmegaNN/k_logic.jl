@@ -3,7 +3,7 @@ struct NNKWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
     output::O # vector to hold network prediction
     gradient::G # vector to hold scaled gradient
     network::N # neural network
-    steady::T
+    steady::T # this will need to be false to run at every timestep
 end
 Adapt.@adapt_structure NNKWallFunction
 
@@ -11,7 +11,7 @@ Adapt.@adapt_structure NNKWallFunction
 @load "NNmean.bson" data_mean
 @load "NNstd.bson" data_std
 
-@generated correct_productionNN!() = begin
+@generated correct_productionNN!() = begin # JL: need to change these arguments to be the same as in the update user boundary that we changed with humberto
     BCs = fieldBCs.parameters
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
@@ -30,7 +30,7 @@ Adapt.@adapt_structure NNKWallFunction
 end
 
 XCALibre.Discretise.update_user_boundary!(
-    BC::DirichletFunction{I,V}, P, BC, eqn, model, config 
+    BC::DirichletFunction{I,V}, P, BC, eqn, model, config # JL: need to change these arguments to be the same as in the update user boundary that we changed with humberto
     ) where{I,V <:NNKWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
@@ -62,7 +62,7 @@ XCALibre.Discretise.update_user_boundary!(
     Pk = model.turbulence.Pk
 
     # calcualte gradient du+/dy+
-    compute_gradient(y) = Zygote.gradient(x -> network(x)[1], y)[1] # needs to be Zygote.jacobian for Lux model
+    compute_gradient(y) = Zygote.gradient(x -> network(x)[1], y_plus)[1] # needs to be Zygote.jacobian for Lux model
     # for loop to calculate gradient for all values in input
     gradient = [compute_gradient(input[:, i]) for i in 1:size(input, 2)]
     gradient = hcat(gradient...)
@@ -70,7 +70,7 @@ XCALibre.Discretise.update_user_boundary!(
     # Execute apply boundary conditions kernel
     kernel! = _update_user_boundary!(backend, workgroup)
     kernel!(
-        P.values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID, gradU, ndrange=length(facesID_range)
+        P.values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID, gradU, ndrange=length(facesID_range) # JL: need to change these arguments to be the same as in the update user boundary that we changed with humberto
     )
 
     #correct_production!(Pk, k.BCs, model, S.gradU, config) # need to change the arguments in this
@@ -78,7 +78,7 @@ XCALibre.Discretise.update_user_boundary!(
 end
 
 # Using Flux NN
-@kernel function _update_user_boundary!(values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID) # arguments defined in the struct need to go here also
+@kernel function _update_user_boundary!(values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID) # JL: need to change these arguments to be the same as in the update user boundary that we changed with humberto
         i = @index(Global)
         fID = i + start_ID - 1 # Redefine thread index to become face ID
     
@@ -119,3 +119,5 @@ end
         ##nzval[cIndex] = one(eltype(nzval))
         #b[cID] = ωc
     end
+
+# JL: need to create the functor which assigns the values to the variables in the struct (see Inflow example)

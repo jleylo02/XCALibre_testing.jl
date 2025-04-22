@@ -41,7 +41,7 @@ function _apply_boundary_conditions!(
         start_ID = facesID_range[1]
 
         # update user defined boundary storage (if needed)
-        update_user_boundary!(BC, faces, cells, facesID_range, time, config) #JL: modify to pass the model and equation 
+        update_user_boundary!(BC, faces, cells, facesID_range, time, config) #JL: my update user boundary will need same arguments 
         
         # Execute apply boundary conditions kernel
         kernel_range = length(facesID_range)

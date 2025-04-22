@@ -43,6 +43,7 @@ Below the use of this macro is illustrated for the implementation of a  `Dirichl
 When called, this functor will return two values `ap` and `an`, where `ap` is the cell contribution for approximating the boundary face value, and `an` is the explicit part of the face value approximation i.e. `ap` contributes to the diagonal of the sparse matrix (left-hand side) and `an` is the explicit contribution assigned to the solution vector `b` on the right-hand of the linear system of equations ``Ax = b``
 
 """
+# JL: 
 macro define_boundary(boundary, operator, definition)
     quote
         @inline (bc::$boundary)(term::Operator{F,P,I,$operator}, colval, rowptr, nzval, cellID, zcellID, cell, face, fID, i, component, time) where {F,P,I} = 

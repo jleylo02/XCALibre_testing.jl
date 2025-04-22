@@ -17,7 +17,7 @@ end
     flux = -J*area/delta
     ap = term.sign*(flux)
     ap, ap*values[cellID] # original
-    0.0, 0.0
+    0.0, 0.0 # JL: modifies cell ventre and not face. All of the lones above could be commented out
 end
 
 # OmegaWallFunction
@@ -38,7 +38,7 @@ end
     term::Operator{F,P,I,Divergence{Linear}}, colval, rowptr, nzval, cellID, zcellID, cell, face, fID, i, component, time) where {F,P,I} = begin
     flux = term.flux[fID]
     ap = term.sign*(flux) 
-    ap, 0.0 # original
+    ap, 0.0 # original #JL:  this returns value of b and laplacian
 end
 
 # OmegaWallFunction 
