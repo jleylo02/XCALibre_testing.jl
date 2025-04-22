@@ -87,7 +87,7 @@ end
         (; U) = momentum
         (; k, nut) = turbulence
     
-        Uw = U.BCs[BC.ID].value # JL: recently changed
+        Uw = SVector{3}(0.0,0.0,0.0)
         cID = boundary_cellsID[fID]
         face = faces[fID]
         nuc = nu[cID]
@@ -118,6 +118,8 @@ end
         #cIndex = spindex(rowptr, colval, cID, cID)
         ##nzval[cIndex] = one(eltype(nzval))
         #b[cID] = ωc
+
+        b[cID] = b[cID] - pk[cID]*Volume + correctedVAlue*Volume # JL: this is what needs to be done once the model is passed
     end
 
 # JL: need to create the functor which assigns the values to the variables in the struct (see Inflow example)
