@@ -1,11 +1,11 @@
-struct NNWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
+struct NNKWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
     input::I # vector to hold input yplus value
     output::O # vector to hold network prediction
     gradient::G # vector to hold scaled gradient
     network::N # neural network
     steady::T
 end
-Adapt.@adapt_structure NNWallFunction
+Adapt.@adapt_structure NNKWallFunction
 
 @load "WallNormNN_Flux.bson" network
 @load "NNmean.bson" data_mean
@@ -31,7 +31,7 @@ end
 
 XCALibre.Discretise.update_user_boundary!(
     BC::DirichletFunction{I,V}, P, BC, eqn, model, config 
-    ) where{I,V <:NNWallFunction} = begin
+    ) where{I,V <:NNKWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware
