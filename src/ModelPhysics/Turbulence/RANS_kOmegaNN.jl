@@ -179,8 +179,8 @@ function turbulence!(
     
     @. Pω.values = rho.values*coeffs.α1*Pk.values
     @. Pk.values = rho.values*nut.values*Pk.values
-    #correct_production!(Pk, k.BCs, model, S.gradU, config) # Must be after previous line
-    # JL : replace this with a custom function to call the NNWallFunction
+    #correct_production!(Pk, k.BCs, model, S.gradU, config) # Must be after previous line # JL : replace this with a custom function to call the NNWallFunction
+    correct_productionNN!(P, fieldBCs, model, gradU, config) # JL: Need to potentially change args
     @. Dωf.values = rho.values*coeffs.β1*omega.values
     @. mueffω.values = rhof.values * (nuf.values + coeffs.σω*nutf.values)
     @. Dkf.values = rho.values*coeffs.β⁺*omega.values
