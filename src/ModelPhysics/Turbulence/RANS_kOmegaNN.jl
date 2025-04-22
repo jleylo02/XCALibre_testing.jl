@@ -212,7 +212,8 @@ function turbulence!(
 
     @. nut.values = k.values/omega.values
 # JL: make generic function to update nutf (see humberto comment in KOmega file)
-# JL: see Humberto changes to correct_nut_wall! function, replicate the structure with my own custom function
+#= JL: see Humberto changes to correct_nut_wall! function, replicate the structure with my own custom function called
+ correct_eddy_viscosity_NN! =#
     interpolate!(nutf, nut, config)
     correct_boundaries!(nutf, nut, nut.BCs, time, config)
     correct_eddy_viscosity!(nutf, nut.BCs, model, config) # JL: may also have to replace this 

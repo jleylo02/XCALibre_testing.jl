@@ -89,7 +89,7 @@ end
         #uStar = cmu^0.25*sqrt(k[cID])
         #dUdy = uStar/(kappa*delta)
         yplus = y_plus(k[cID], nuc, delta, cmu)
-        BC.value.input = (yplus .- data_mean) ./ data_std
+        input = (yplus .- data_mean) ./ data_std
         
         dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
         nutw = nuc*(input/output)
