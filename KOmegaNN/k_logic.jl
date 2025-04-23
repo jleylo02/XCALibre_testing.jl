@@ -95,9 +95,6 @@ end
         nutw = nuc*(input/output)
         mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
         values[cID] = (nutw)*mag_grad_U*dUdy # corrected Pk
-        # JL: based on conversation with Humberto, I think what needs to be done here is similar to the OmegaWallFunction:
-        # JL: need to alter this to update the Pk value that is used in the k equation (I think, need to sit and think about this)
-
         b[cID] = b[cID] - Pk[cID]*Volume + values[cID]*Volume # JL: this is what needs to be done once the model is passed
     end
 
