@@ -26,8 +26,7 @@ Adapt.@adapt_structure NNKWallFunction
 end
 
 XCALibre.Discretise.update_user_boundary!(
-    BC::DirichletFunction{I,V}, BC, eqnModel, component, faces, cells, facesID_range, time, config ) 
-    where{I,V <:NNKWallFunction} = begin
+    BC::DirichletFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNKWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware
@@ -96,6 +95,11 @@ end
     values[cID] = (nutw)*mag_grad_U*dUdy # corrected Pk
     b[cID] = b[cID] - Pk[cID]*Volume + values[cID]*Volume # JL: this is what needs to be done once the model is passed
 end
+
+ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
+input = zeros(1,ncells)
+input .= (input)
+output = network
 
 # K Functor
 k_w= NNKWallFunction(

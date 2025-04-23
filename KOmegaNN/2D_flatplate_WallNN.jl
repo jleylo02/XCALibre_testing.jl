@@ -1,8 +1,6 @@
 # using Plots
 using XCALibre
 # using CUDA
-using KernelAbstractions
-using Adapt
 using Flux
 using BSON: @load
 
@@ -43,6 +41,22 @@ nu = 1e-5
 Re = velocity[1]*1/nu
 k_inlet = 0.375
 ω_inlet = 1000
+
+ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
+input = zeros(1,ncells)
+input .= (input .- data_mean) ./ data_std
+output = network(input)
+
+# K Functor
+k_w= NNKWallFunction(
+    input,
+    output, 
+    gradient, 
+    network, 
+    false
+)
+
+k_w_dev = k_w
 
 model = Physics(
     time = Steady(),
