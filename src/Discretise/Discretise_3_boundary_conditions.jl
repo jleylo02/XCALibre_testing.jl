@@ -33,7 +33,8 @@ end
     # 0.0, 0.0
 end
 
-# KWallFunction JL: copy the structure of these for my two WFs
+# KWallFunction 
+#= JL: copy the structure of these for my two WFs, do this in the dirichletFunction.jl file =#
 @inline (bc::KWallFunction)(
     term::Operator{F,P,I,Divergence{Linear}}, colval, rowptr, nzval, cellID, zcellID, cell, face, fID, i, component, time) where {F,P,I} = begin
     flux = term.flux[fID]
