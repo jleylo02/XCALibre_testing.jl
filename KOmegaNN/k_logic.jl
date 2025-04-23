@@ -7,10 +7,6 @@ struct NNKWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
 end
 Adapt.@adapt_structure NNKWallFunction
 
-@load "WallNormNN_Flux.bson" network
-@load "NNmean.bson" data_mean
-@load "NNstd.bson" data_std
-
 @generated correct_production_NN!(eqnModel, component, faces, cells, facesID_range, time, config) = begin 
     BCs = fieldBCs.parameters
     func_calls = Expr[]
@@ -74,29 +70,37 @@ end
 
 # Using Flux NN
 @kernel function _update_user_boundary!(eqnModel, component, faces, cells, facesID_range, time, config)
-        i = @index(Global)
-        fID = i + start_ID - 1 # Redefine thread index to become face ID
+    i = @index(Global)
+    fID = i + start_ID - 1 # Redefine thread index to become face ID
     
-        (; input, output, cmu, gradient) = BC.value 
-        (; nu) = fluid
-        (; U) = momentum
-        (; k, Pk) = turbulence
+    (; input, output, cmu, gradient) = BC.value 
+    (; nu) = fluid
+    (; U) = momentum
+    (; k, Pk) = turbulence
     
-        Uw = SVector{3}(0.0,0.0,0.0)
-        cID = boundary_cellsID[fID]
-        face = faces[fID]
-        nuc = nu[cID]
-        (; delta, normal)= face
-        #uStar = cmu^0.25*sqrt(k[cID])
-        #dUdy = uStar/(kappa*delta)
-        yplus = y_plus(k[cID], nuc, delta, cmu)
-        input = (yplus .- data_mean) ./ data_std
+    Uw = SVector{3}(0.0,0.0,0.0)
+    cID = boundary_cellsID[fID]
+    face = faces[fID]
+    nuc = nu[cID]
+    (; delta, normal)= face
+    
+    yplus = y_plus(k[cID], nuc, delta, cmu)
+    input = (yplus .- data_mean) ./ data_std
         
-        dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
-        nutw = nuc*(input/output)
-        mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
-        values[cID] = (nutw)*mag_grad_U*dUdy # corrected Pk
-        b[cID] = b[cID] - Pk[cID]*Volume + values[cID]*Volume # JL: this is what needs to be done once the model is passed
-    end
+    dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
+    nutw = nuc*(input/output)
+    mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
+    values[cID] = (nutw)*mag_grad_U*dUdy # corrected Pk
+    b[cID] = b[cID] - Pk[cID]*Volume + values[cID]*Volume # JL: this is what needs to be done once the model is passed
+end
 
-# JL: need to create the functor which assigns the values to the variables in the struct (see Inflow example)
+# K Functor
+k_w= NNKWallFunction(
+    input,
+    output, 
+    gradient, 
+    network, 
+    false
+)
+
+k_w_dev = k_w

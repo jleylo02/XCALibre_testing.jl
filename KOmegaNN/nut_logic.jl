@@ -6,10 +6,6 @@ struct NNNutwWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
 end
 Adapt.@adapt_structure NNNutwWallFunction
 
-@load "WallNormNN_Flux.bson" network
-@load "NNmean.bson" data_mean
-@load "NNstd.bson" data_std
-
 @generated correct_eddy_viscosity_NN!(eqnModel, component, faces, cells, facesID_range, time, config) = begin
     BCs = fieldBCs.parameters
     func_calls = Expr[]
@@ -58,23 +54,31 @@ end
 
 # Using Flux NN
 @kernel function _update_user_boundary!(eqnModel, component, faces, cells, facesID_range, time, config)
-        i = @index(Global)
-        fID = i + start_ID - 1 # Redefine thread index to become face ID
+    i = @index(Global)
+    fID = i + start_ID - 1 # Redefine thread index to become face ID
     
-        (; input, output, cmu) = BC.value 
-        (; nu) = fluid
-        (; k) = turbulence
+    (; input, output, cmu) = BC.value 
+    (; nu) = fluid
+    (; k) = turbulence
     
-        Uw = SVector{3}(0.0,0.0,0.0)
-        cID = boundary_cellsID[fID]
-        face = faces[fID]
-        nuc = nu[cID]
-        (; delta, normal)= face
-        yplus = y_plus(k[cID], nuc, delta, cmu)
-        input = (yplus .- data_mean) ./ data_std
+    Uw = SVector{3}(0.0,0.0,0.0)
+    cID = boundary_cellsID[fID]
+    face = faces[fID]
+    nuc = nu[cID]
+    (; delta, normal)= face
+    yplus = y_plus(k[cID], nuc, delta, cmu)
+    input = (yplus .- data_mean) ./ data_std
         
-        nutw = nuc*(input/output)
-        values[fID] = nutw
-    end
+    nutw = nuc*(input/output)
+    values[fID] = nutw
+end
 
-# JL: need to create the functor which assigns the values to the variables in the struct (see Inflow example)
+# Nutw Functor
+nut_w= NNNutwWallFunction(
+    input,
+    output,  
+    network, 
+    false
+)
+
+nut_w_dev = nut_w
