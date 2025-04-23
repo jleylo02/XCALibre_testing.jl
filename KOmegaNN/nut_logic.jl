@@ -6,14 +6,14 @@ struct NNNutwWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
 end
 Adapt.@adapt_structure NNNutwWallFunction
 
-@generated correct_eddy_viscosity_NN!(BC, eqnModel, component, faces, cells, facesID_range, time, config) = begin
+@generated correct_eddy_viscosity_NN!(vtf, BC, eqnModel, component, faces, cells, facesID_range, time, config) = begin
     BCs = fieldBCs.parameters
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
         BC = BCs[i]
         if BC <: DirichletFunction # JL: This may have to change when new Neumann type is defined
             call = quote
-                update_user_boundary!(BC, eqnModel, component, faces, cells, facesID_range, time, config) # JL: args here must mate those in the generated function
+                update_user_boundary!(vtf, BC, eqnModel, component, faces, cells, facesID_range, time, config) # JL: args here must mate those in the generated function
             end
             push!(func_calls, call)
         end
@@ -49,11 +49,13 @@ XCALibre.Discretise.update_user_boundary!(
 
     # Execute apply boundary conditions kernel
     kernel! = _update_user_boundary!(backend, workgroup)
-    kernel!(BC, eqnModel, component, faces, cells, facesID_range, time, config)
+    kernel!(BC, eqnModel, component, faces, cells, facesID_range, time, config, 
+    νtf.values, fluid, turbulence, boundary_cellsID, start_ID, ndrange=length(facesID_range))
 end
 
 # Using Flux NN
-@kernel function _update_user_boundary!(BC, eqnModel, component, faces, cells, facesID_range, time, config)
+@kernel function _update_user_boundary!(BC, eqnModel, component, faces, cells, facesID_range, time, 
+    config, values, fluid, turbulence, boundary_cellsID, start_ID)
     i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
     
