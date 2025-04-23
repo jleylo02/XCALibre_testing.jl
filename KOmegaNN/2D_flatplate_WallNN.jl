@@ -12,6 +12,27 @@ grid = "flatplate_2D_highRe.unv"
 mesh_file = joinpath(grids_dir, grid)
 mesh = UNV2D_mesh(mesh_file, scale=0.001)
 
+# Using Flux NN
+# includet("KOmegaNN_Flux.jl")
+@load "WallNormNN_Flux.bson" network
+@load "NNmean.bson" data_mean
+@load "NNstd.bson" data_std
+
+# Using Lux NN
+# includet("KOmegaNN_Lux.jl")
+@load "WallNormNN_Lux.bson" network
+@load "WallNormNN_ls.bson" layer_states
+@load "WallNormNN_p.bson" parameters
+@load "NNmean.bson" data_mean
+@load "NNstd.bson" data_std
+
+## JL: do I need this bit?? ##
+(bc::Inflow)(vec, t, i) = begin
+    velocity = @view bc.output[:,i]
+    return @inbounds SVector{3}(velocity[1], velocity[2], velocity[3])
+    # return @inbounds SVector{3}(velocity)
+end
+
 backend = CPU(); # activate_multithread(backend)
 mesh_dev = mesh; workgroup = 1024
 # backend = CUDABackend()
@@ -49,7 +70,7 @@ model = Physics(
 @assign! model turbulence k (
     Dirichlet(:inlet, k_inlet),
     Neumann(:outlet, 0.0),
-    KWallFunction(:wall),
+    DirichletFunction(:wall, k_w_dev),
     # Neumann(:wall, 0.0),
     Neumann(:top, 0.0)
 )
@@ -64,7 +85,7 @@ model = Physics(
 @assign! model turbulence nut (
     Dirichlet(:inlet, k_inlet/ω_inlet),
     Neumann(:outlet, 0.0),
-    NutWallFunction(:wall), 
+    DirichletFunction(:wall, nut_w_dev), 
     Neumann(:top, 0.0)
 )
 
