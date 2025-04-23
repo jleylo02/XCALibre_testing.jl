@@ -180,6 +180,7 @@ function turbulence!(
     @. Pω.values = rho.values*coeffs.α1*Pk.values
     @. Pk.values = rho.values*nut.values*Pk.values
     correct_production!(Pk, k.BCs, model, S.gradU, config) # Must be after previous line 
+    correct_production_NN!(eqnModel, component, faces, cells, facesID_range, time, config)
     @. Dωf.values = rho.values*coeffs.β1*omega.values
     @. mueffω.values = rhof.values * (nuf.values + coeffs.σω*nutf.values)
     @. Dkf.values = rho.values*coeffs.β⁺*omega.values
@@ -211,12 +212,10 @@ function turbulence!(
     # explicit_relaxation!(k, prev, solvers.k.relax, config)
 
     @. nut.values = k.values/omega.values
-# JL: make generic function to update nutf (see humberto comment in KOmega file)
-#= JL: see Humberto changes to correct_nut_wall! function, replicate the structure with my own custom function called
- correct_eddy_viscosity_NN! =#
     interpolate!(nutf, nut, config)
     correct_boundaries!(nutf, nut, nut.BCs, time, config)
-    correct_eddy_viscosity!(nutf, nut.BCs, model, config) # JL: may also have to replace this 
+    correct_eddy_viscosity!(nutf, nut.BCs, model, config) 
+    correct_eddy_viscosity_NN!(eqnModel, component, faces, cells, facesID_range, time, config)
 
     state.residuals = ((:k , k_res),(:omega, ω_res))
     state.converged = k_res < solvers.k.convergence && ω_res < solvers.omega.convergence
