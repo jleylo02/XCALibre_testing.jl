@@ -11,14 +11,14 @@ Adapt.@adapt_structure NNKWallFunction
 @load "NNmean.bson" data_mean
 @load "NNstd.bson" data_std
 
-@generated correct_productionNN!() = begin # JL: need to change these arguments to be the same as in the update user boundary that we changed with humberto
+@generated correct_production_NN!(eqnModel, component, faces, cells, facesID_range, time, config) = begin 
     BCs = fieldBCs.parameters
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
         BC = BCs[i]
         if BC <: DirichletFunction # JL: This may have to change when new Neumann type is defined
             call = quote
-                update_user_boundary!() # JL: args here must mate those in the generated function
+                update_user_boundary!(eqnModel, component, faces, cells, facesID_range, time, config) 
             end
             push!(func_calls, call)
         end
@@ -30,7 +30,8 @@ Adapt.@adapt_structure NNKWallFunction
 end
 
 XCALibre.Discretise.update_user_boundary!(
-    BC::DirichletFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNKWallFunction} = begin
+    BC::DirichletFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) 
+    where{I,V <:NNKWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware
