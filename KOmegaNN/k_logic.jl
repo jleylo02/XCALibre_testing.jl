@@ -7,14 +7,14 @@ struct NNKWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
 end
 Adapt.@adapt_structure NNKWallFunction
 
-@generated correct_production_NN!(eqnModel, component, faces, cells, facesID_range, time, config) = begin 
+@generated correct_production_NN!(BC, eqnModel, component, faces, cells, facesID_range, time, config) = begin 
     BCs = fieldBCs.parameters
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
         BC = BCs[i]
         if BC <: DirichletFunction # JL: This may have to change when new Neumann type is defined
             call = quote
-                update_user_boundary!(eqnModel, component, faces, cells, facesID_range, time, config) 
+                update_user_boundary!(BC, eqnModel, component, faces, cells, facesID_range, time, config) 
             end
             push!(func_calls, call)
         end
@@ -26,7 +26,7 @@ Adapt.@adapt_structure NNKWallFunction
 end
 
 XCALibre.Discretise.update_user_boundary!(
-    BC::DirichletFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) 
+    BC::DirichletFunction{I,V}, BC, eqnModel, component, faces, cells, facesID_range, time, config ) 
     where{I,V <:NNKWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
@@ -65,11 +65,11 @@ XCALibre.Discretise.update_user_boundary!(
 
     # Execute apply boundary conditions kernel
     kernel! = _update_user_boundary!(backend, workgroup)
-    kernel!(eqnModel, component, faces, cells, facesID_range, time, config)
+    kernel!(BC, eqnModel, component, faces, cells, facesID_range, time, config)
 end
 
 # Using Flux NN
-@kernel function _update_user_boundary!(eqnModel, component, faces, cells, facesID_range, time, config)
+@kernel function _update_user_boundary!(BC, eqnModel, component, faces, cells, facesID_range, time, config)
     i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
     
