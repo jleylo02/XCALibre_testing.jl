@@ -64,12 +64,15 @@ XCALibre.Discretise.update_user_boundary!(
     gradient = hcat(gradient...)
 
     # Execute apply boundary conditions kernel
-    kernel! = _update_user_boundary!(backend, workgroup)
-    kernel!(BC, eqnModel, component, faces, cells, facesID_range, time, config)
+    kernel_range = length(facesID_range)
+    kernel! = _update_user_boundary!(backend, workgroup, kernel_range)
+    kernel!(P.values, BC, fluid, momentum, turbulence, eqnModel, component, faces, cells, facesID_range, 
+    start_ID, boundary_cellsID, time, config, ndrange=kernel_range)
 end
 
 # Using Flux NN
-@kernel function _update_user_boundary!(BC, eqnModel, component, faces, cells, facesID_range, time, config)
+@kernel function _update_user_boundary!(values, BC, fluid, momentum, turbulence, eqnModel, component, 
+    faces, cells, facesID_range, start_ID, boundary_cellsID, time, config)
     i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
     
