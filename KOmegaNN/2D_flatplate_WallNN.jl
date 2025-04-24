@@ -16,9 +16,9 @@ mesh = UNV2D_mesh(mesh_file, scale=0.001)
 # includet("KOmegaNN_Flux.jl")
 includet("k_logic.jl")
 includet("nut_logic.jl")
-@load "WallNormNN_Flux.bson" network
-@load "NNmean.bson" data_mean
-@load "NNstd.bson" data_std
+@load "KOmegaNN/WallNormNN_Flux.bson" network
+@load "KOmegaNN/NNmean.bson" data_mean
+@load "KOmegaNN/NNstd.bson" data_std
 
 # Using Lux NN
 # includet("KOmegaNN_Lux.jl")
@@ -51,6 +51,15 @@ input = zeros(1,ncells)
 input = (input .- data_mean) ./ data_std
 output = network(input)
 
+k_w= NNKWallFunction(
+    0.0,
+    0.0, 
+    0.0, 
+    0.0, 
+    false
+)
+
+k_w_dev = k_w
 
 model = Physics(
     time = Steady(),

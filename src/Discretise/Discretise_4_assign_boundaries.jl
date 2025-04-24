@@ -121,6 +121,12 @@ assign(scalar::ScalarField, args...) = begin
             BCs = (fixedValue(arg, idx, BCs_vals))
             @reset scalar.BCs = (scalar.BCs..., BCs)
 
+        # Exception 4: value is a user defined structure/functor
+        elseif typeof(arg.value) <: XCALibreUserFunctor
+            BCs_vals = arg.value
+            BCs = (fixedValue(arg, idx, BCs_vals))
+            @reset scalar.BCs = (scalar.BCs..., BCs)
+
         # Error exception: Value is not named tuple or number
         else
             error("Value given to boundary $idx ($bname) is not recognised")

@@ -1,7 +1,7 @@
-export XCALibreUserFunctor
+# export XCALibreUserFunctor
 export NeumannFunction
 
-abstract type XCALibreUserFunctor end
+# abstract type XCALibreUserFunctor end
 
 """
     NeumannFunction(ID, value) <: AbstractNeumann
