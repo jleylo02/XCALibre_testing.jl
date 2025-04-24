@@ -96,11 +96,6 @@ end
     b[cID] = b[cID] - Pk[cID]*Volume + values[cID]*Volume # JL: this is what needs to be done once the model is passed
 end
 
-ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
-input = zeros(1,ncells)
-input .= (input) # JL: would i have to scale this now?
-output = network
-
 # K Functor
 k_w= NNKWallFunction(
     input,

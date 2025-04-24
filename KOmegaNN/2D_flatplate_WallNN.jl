@@ -3,6 +3,8 @@ using XCALibre
 # using CUDA
 using Flux
 using BSON: @load
+using Adapt
+using KernelAbstractions
 
 grids_dir = pkgdir(XCALibre, "examples/0_GRIDS")
 grid = "flatplate_2D_highRe.unv"
@@ -12,6 +14,8 @@ mesh = UNV2D_mesh(mesh_file, scale=0.001)
 
 # Using Flux NN
 # includet("KOmegaNN_Flux.jl")
+includet("k_logic.jl")
+includet("nut_logic.jl")
 @load "WallNormNN_Flux.bson" network
 @load "NNmean.bson" data_mean
 @load "NNstd.bson" data_std
@@ -43,20 +47,9 @@ k_inlet = 0.375
 ω_inlet = 1000
 
 ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
-input = zeros(1,ncells)
-input .= (input .- data_mean) ./ data_std
-output = network(input)
-
-# K Functor
-k_w= NNKWallFunction(
-    input,
-    output, 
-    gradient, 
-    network, 
-    false
-)
-
-k_w_dev = k_w
+input = zeros(1,ncells) # JL: would i have to scale this now?
+output = zeros(1,ncells)
+gradient = zeros(1,ncells)
 
 model = Physics(
     time = Steady(),
