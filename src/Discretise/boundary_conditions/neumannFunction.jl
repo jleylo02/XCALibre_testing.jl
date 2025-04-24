@@ -1,5 +1,5 @@
 export XCALibreUserFunctor
-export NeumannFunctionFunction
+export NeumannFunction
 
 abstract type XCALibreUserFunctor end
 
