@@ -38,7 +38,8 @@ function fixedValue(BC::DirichletFunction, ID::I, value::V) where {I<:Integer,V}
         return DirichletFunction{I,V}(ID, value)
     # Error if value is not scalar or tuple
     else
-        throw("The value provided should be a scalar or a tuple")
+        throw("The value provided should be a scalar or a tuple") #= JL: extended the functionality 
+        of this to allow vectors, so may have to change this to allow vector and not throw error =#
     end
 end
 
