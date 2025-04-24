@@ -84,7 +84,7 @@ model = Physics(
 @assign! model turbulence k (
     Dirichlet(:inlet, k_inlet),
     Neumann(:outlet, 0.0),
-    DirichletFunction(:wall, k_w_dev),
+    NeumannFunction(:wall, k_w_dev),
     # Neumann(:wall, 0.0),
     Neumann(:top, 0.0)
 )
@@ -99,7 +99,7 @@ model = Physics(
 @assign! model turbulence nut (
     Dirichlet(:inlet, k_inlet/ω_inlet),
     Neumann(:outlet, 0.0),
-    DirichletFunction(:wall, nut_w_dev), 
+    NeumannFunction(:wall, nut_w_dev), 
     Neumann(:top, 0.0)
 )
 

@@ -11,7 +11,7 @@ Adapt.@adapt_structure NNNutwWallFunction
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
         BC = BCs[i]
-        if BC <: DirichletFunction # JL: This may have to change when new Neumann type is defined
+        if BC <: NeumannFunction # JL: This may have to change when new Neumann type is defined
             call = quote
                 update_user_boundary!(vtf, BC, eqnModel, component, faces, cells, facesID_range, time, config) # JL: args here must mate those in the generated function
             end
@@ -25,7 +25,7 @@ Adapt.@adapt_structure NNNutwWallFunction
 end
 
 XCALibre.Discretise.update_user_boundary!(
-    BC::DirichletFunction{I,V}, BC, eqnModel, component, faces, cells, facesID_range, time, config ) 
+    BC::NeumannFunction{I,V}, BC, eqnModel, component, faces, cells, facesID_range, time, config ) 
     where{I,V <:NNNutwWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
