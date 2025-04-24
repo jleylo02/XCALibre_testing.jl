@@ -44,7 +44,7 @@ XCALibre.Discretise.update_user_boundary!(
     start_ID = facesID_range[1]
 
     # Access equation data and deconstruct sparse array
-    # JL: The arguments here need to be altered
+
     A = _A(eqnModel)
     b = _b(eqnModel, nothing)
     colval = _colval(A)
@@ -57,7 +57,7 @@ XCALibre.Discretise.update_user_boundary!(
     Pk = model.turbulence.Pk
 
     # calcualte gradient du+/dy+
-    compute_gradient(y) = Zygote.gradient(x -> network(x)[1], y_plus)[1] # needs to be Zygote.jacobian for Lux model
+    compute_gradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1] # needs to be Zygote.jacobian for Lux model
     # for loop to calculate gradient for all values in input
     gradient = [compute_gradient(input[:, i]) for i in 1:size(input, 2)]
     gradient = hcat(gradient...)
@@ -98,7 +98,7 @@ end
 
 ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
 input = zeros(1,ncells)
-input .= (input)
+input .= (input) # JL: would i have to scale this now?
 output = network
 
 # K Functor
