@@ -1,4 +1,4 @@
-struct NNNutwWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
+struct NNNutwWallFunction{I,O,N,T} <: XCALibreUserFunctor
     input::I # vector to hold input yplus value
     output::O # vector to hold network prediction
     network::N # neural network
@@ -6,14 +6,14 @@ struct NNNutwWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
 end
 Adapt.@adapt_structure NNNutwWallFunction
 
-@generated correct_eddy_viscosity_NN!(vtf, BC, eqnModel, component, faces, cells, facesID_range, time, config) = begin
+@generated correct_eddy_viscosity_NN!(νtf, BC, eqnModel, component, faces, cells, facesID_range, time, config) = begin
     BCs = fieldBCs.parameters
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
         BC = BCs[i]
         if BC <: NeumannFunction # JL: This may have to change when new Neumann type is defined
             call = quote
-                update_user_boundary!(vtf, BC, eqnModel, component, faces, cells, facesID_range, time, config) # JL: args here must mate those in the generated function
+                update_user_boundary!(νtf, BC, eqnModel, component, faces, cells, facesID_range, time, config) # JL: args here must mate those in the generated function
             end
             push!(func_calls, call)
         end
@@ -25,8 +25,7 @@ Adapt.@adapt_structure NNNutwWallFunction
 end
 
 XCALibre.Discretise.update_user_boundary!(
-    BC::NeumannFunction{I,V}, BC, eqnModel, component, faces, cells, facesID_range, time, config ) 
-    where{I,V <:NNNutwWallFunction} = begin
+    BC::NeumannFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNNutwWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware
