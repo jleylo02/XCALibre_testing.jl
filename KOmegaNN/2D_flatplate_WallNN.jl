@@ -47,9 +47,10 @@ k_inlet = 0.375
 ω_inlet = 1000
 
 ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
-input = zeros(1,ncells) # JL: would i have to scale this now?
-output = zeros(1,ncells)
-gradient = zeros(1,ncells)
+input = zeros(1,ncells) 
+input = (input .- data_mean) ./ data_std
+output = network(input)
+
 
 model = Physics(
     time = Steady(),
