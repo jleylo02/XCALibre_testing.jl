@@ -16,10 +16,12 @@ grid = "flatplate_2D_highRe.unv"
 mesh_file = joinpath(grids_dir, grid)
 mesh = UNV2D_mesh(mesh_file, scale=0.001)
 
+turb_dir = pkgdir(XCALibre, "src/ModelPhysics/Turbulence")
+turb = "RANS_kOmegaNN_functions.jl"
+turb_file = joinpath(turb_dir, turb)
+includet(turb_file)
 # Using Flux NN
 # includet("KOmegaNN_Flux.jl")
-includet("k_logic.jl")
-includet("nut_logic.jl")
 @load "KOmegaNN/WallNormNN_Flux.bson" network
 @load "KOmegaNN/NNmean.bson" data_mean
 @load "KOmegaNN/NNstd.bson" data_std
@@ -50,15 +52,15 @@ Re = velocity[1]*1/nu
 k_inlet = 0.375
 ω_inlet = 1000
 
-#ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
-#input = zeros(1,ncells) 
-#input = (input .- data_mean) ./ data_std
-#output = network(input)
+ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
+input = Float32.(zeros(1,ncells)) 
+input = (input .- data_mean) ./ data_std
+output = network(input)
 
 k_w= NNKWallFunction(
-    Float32[0.0],
-    Float32[0.0], 
-    Float32[0.0], 
+    input,
+    output,
+    similar(input), 
     network, 
     false
 )
@@ -67,8 +69,8 @@ k_w_dev = k_w
 
 # Nutw Functor
 nut_w= NNNutwWallFunction(
-    [0.0],
-    [0.0],
+    input,
+    output,
     network,
     false
 )
