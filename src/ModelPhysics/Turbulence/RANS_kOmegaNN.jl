@@ -180,7 +180,7 @@ function turbulence!(
     @. Pω.values = rho.values*coeffs.α1*Pk.values
     @. Pk.values = rho.values*nut.values*Pk.values
     correct_production!(Pk, k.BCs, model, S.gradU, config) # Must be after previous line 
-    correct_production_NN!(BC, eqnModel, component, faces, cells, facesID_range, time, config)
+    correct_production_NN!(P, BC, eqnModel, component, faces, cells, facesID_range, time, config)
     @. Dωf.values = rho.values*coeffs.β1*omega.values
     @. mueffω.values = rhof.values * (nuf.values + coeffs.σω*nutf.values)
     @. Dkf.values = rho.values*coeffs.β⁺*omega.values
