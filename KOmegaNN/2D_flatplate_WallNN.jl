@@ -3,8 +3,12 @@ using XCALibre
 # using CUDA
 using Flux
 using BSON: @load
-using Adapt
+using StaticArrays
+using Statistics
+using LinearAlgebra
 using KernelAbstractions
+using Adapt
+using Zygote
 
 grids_dir = pkgdir(XCALibre, "examples/0_GRIDS")
 grid = "flatplate_2D_highRe.unv"
@@ -46,16 +50,16 @@ Re = velocity[1]*1/nu
 k_inlet = 0.375
 ω_inlet = 1000
 
-ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
-input = zeros(1,ncells) 
-input = (input .- data_mean) ./ data_std
-output = network(input)
+#ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
+#input = zeros(1,ncells) 
+#input = (input .- data_mean) ./ data_std
+#output = network(input)
 
 k_w= NNKWallFunction(
-    0.0,
-    0.0, 
-    0.0, 
-    0.0, 
+    Float32[0.0],
+    Float32[0.0], 
+    Float32[0.0], 
+    network, 
     false
 )
 
@@ -63,9 +67,9 @@ k_w_dev = k_w
 
 # Nutw Functor
 nut_w= NNNutwWallFunction(
-    0.0,
-    0.0,
-    0.0,
+    [0.0],
+    [0.0],
+    network,
     false
 )
 
