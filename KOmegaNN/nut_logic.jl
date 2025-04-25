@@ -82,4 +82,3 @@ nut_w= NNNutwWallFunction(
     false
 )
 
-nut_w_dev = nut_w

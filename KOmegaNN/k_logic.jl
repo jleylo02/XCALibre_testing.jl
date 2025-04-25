@@ -104,5 +104,3 @@ k_w= NNKWallFunction(
     network, 
     false
 )
-
-k_w_dev = k_w

@@ -61,6 +61,16 @@ k_w= NNKWallFunction(
 
 k_w_dev = k_w
 
+# Nutw Functor
+nut_w= NNNutwWallFunction(
+    0.0,
+    0.0,
+    0.0,
+    false
+)
+
+nut_w_dev = nut_w
+
 model = Physics(
     time = Steady(),
     fluid = Fluid{Incompressible}(nu = nu),
