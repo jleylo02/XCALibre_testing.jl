@@ -1,3 +1,4 @@
+using Zygote
 struct NNKWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
     input::I # vector to hold input yplus value
     output::O # vector to hold network prediction
@@ -6,6 +7,17 @@ struct NNKWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
     steady::T # this will need to be false to run at every timestep
 end
 Adapt.@adapt_structure NNKWallFunction
+
+y_plus(k, nu, y, cmu) = cmu^0.25*y*sqrt(k)/nu
+
+sngrad(Ui, Uw, delta, normal) = begin
+    Udiff = (Ui - Uw)
+    Up = Udiff - (Udiff⋅normal)*normal # parallel velocity difference
+    grad = Up/delta
+    return grad
+end
+
+mag(vector) = sqrt(vector[1]^2 + vector[2]^2 + vector[3]^2)
 
 @generated correct_production_NN!(BC, eqnModel, component, faces, cells, facesID_range, time, config) = begin 
     BCs = fieldBCs.parameters
@@ -26,7 +38,7 @@ Adapt.@adapt_structure NNKWallFunction
 end
 
 XCALibre.Discretise.update_user_boundary!(
-    BC::NeumannFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNKWallFunction} = begin
+    P, BC::NeumannFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNKWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware
@@ -51,10 +63,9 @@ XCALibre.Discretise.update_user_boundary!(
     rowptr = _rowptr(A)
     nzval = _nzval(A)
 
-    (; output, input, network, gradient, cmu) = BC.value
-    cmu = 0.09
+    (; output, input, network, gradient) = BC.value
     output = network(input) 
-    Pk = model.turbulence.Pk
+    
 
     # calcualte gradient du+/dy+
     compute_gradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1] # needs to be Zygote.jacobian for Lux model
@@ -75,24 +86,25 @@ end
     i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
     
-    (; input, output, cmu, gradient) = BC.value 
+    (; input, output, gradient) = BC.value 
     (; nu) = fluid
     (; U) = momentum
-    (; k, Pk) = turbulence
-    
+    (; k) = turbulence
+
+    Pk = model.turbulence.Pk
     Uw = SVector{3}(0.0,0.0,0.0)
     cID = boundary_cellsID[fID]
     face = faces[fID]
     nuc = nu[cID]
     (; delta, normal)= face
-    
+    cmu = 0.09
     yplus = y_plus(k[cID], nuc, delta, cmu)
     input = (yplus .- data_mean) ./ data_std
         
     dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
-    nutw = nuc*(input/output)
+    nutw = nuc.*(input./output)
     mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
-    values[cID] = (nutw)*mag_grad_U*dUdy # corrected Pk
+    values[cID] = (nutw).*mag_grad_U.*dUdy # corrected Pk
     b[cID] = b[cID] - Pk[cID]*Volume + values[cID]*Volume # JL: this is what needs to be done once the model is passed
 end
 
