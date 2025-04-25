@@ -24,8 +24,7 @@ include("RANS_laminar.jl")
 include("RANS_kOmega.jl")
 include("RANS_kOmegaLKE.jl")
 include("RANS_kOmegaNN.jl")
-includet("KOmegaNN/k_logic.jl")
-includet("KOmegaNN/nut_logic.jl")
+include("RANS_kOmegaNN_functions.jl")
 
 # LES models
 include("LES_functions.jl")
