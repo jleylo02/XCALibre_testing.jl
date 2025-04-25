@@ -19,14 +19,14 @@ end
 
 mag(vector) = sqrt(vector[1]^2 + vector[2]^2 + vector[3]^2)
 
-@generated correct_production_NN!(BC, eqnModel, component, faces, cells, facesID_range, time, config) = begin 
+@generated correct_production_NN!(P, BC, eqnModel, component, faces, cells, facesID_range, time, config) = begin 
     BCs = fieldBCs.parameters
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
         BC = BCs[i]
         if BC <: NeumannFunction 
             call = quote
-                update_user_boundary!(BC, eqnModel, component, faces, cells, facesID_range, time, config) 
+                update_user_boundary!(P, BC, eqnModel, component, faces, cells, facesID_range, time, config) 
             end
             push!(func_calls, call)
         end

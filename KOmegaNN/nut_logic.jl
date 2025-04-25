@@ -1,3 +1,4 @@
+using Zygote
 struct NNNutwWallFunction{I,O,N,T} <: XCALibreUserFunctor
     input::I # vector to hold input yplus value
     output::O # vector to hold network prediction
@@ -5,6 +6,17 @@ struct NNNutwWallFunction{I,O,N,T} <: XCALibreUserFunctor
     steady::T # this will need to be false to run at every timestep
 end
 Adapt.@adapt_structure NNNutwWallFunction
+
+y_plus(k, nu, y, cmu) = cmu^0.25*y*sqrt(k)/nu
+
+sngrad(Ui, Uw, delta, normal) = begin
+    Udiff = (Ui - Uw)
+    Up = Udiff - (Udiff⋅normal)*normal # parallel velocity difference
+    grad = Up/delta
+    return grad
+end
+
+mag(vector) = sqrt(vector[1]^2 + vector[2]^2 + vector[3]^2)
 
 @generated correct_eddy_viscosity_NN!(νtf, BC, eqnModel, component, faces, cells, facesID_range, time, config) = begin
     BCs = fieldBCs.parameters
@@ -25,7 +37,7 @@ Adapt.@adapt_structure NNNutwWallFunction
 end
 
 XCALibre.Discretise.update_user_boundary!(
-    BC::NeumannFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNNutwWallFunction} = begin
+    νtf, BC::NeumannFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNNutwWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware
@@ -42,8 +54,8 @@ XCALibre.Discretise.update_user_boundary!(
     facesID_range = boundaries_cpu[BC.ID].IDs_range
     start_ID = facesID_range[1]
 
-    (; output, input, network, cmu) = BC.value
-    cmu = 0.09
+    (; output, input, network) = BC.value
+    
     output = network(input) 
 
     # Execute apply boundary conditions kernel
@@ -58,7 +70,7 @@ end
     i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
     
-    (; input, output, cmu) = BC.value 
+    (; input, output) = BC.value 
     (; nu) = fluid
     (; k) = turbulence
     
@@ -67,10 +79,11 @@ end
     face = faces[fID]
     nuc = nu[cID]
     (; delta, normal)= face
+    cmu = 0.09
     yplus = y_plus(k[cID], nuc, delta, cmu)
     input = (yplus .- data_mean) ./ data_std
         
-    nutw = nuc*(input/output)
+    nutw = nuc.*(input./output)
     values[fID] = nutw
 end
 
