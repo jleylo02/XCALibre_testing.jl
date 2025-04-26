@@ -16,8 +16,8 @@ grid = "flatplate_2D_highRe.unv"
 mesh_file = joinpath(grids_dir, grid)
 mesh = UNV2D_mesh(mesh_file, scale=0.001)
 
-includet("KOmegaNN/k_struct.jl")
-includet("KOmegaNN/nutw_struct.jl")
+includet("k_struct.jl")
+includet("nutw_struct.jl")
 # Using Flux NN
 # includet("KOmegaNN_Flux.jl")
 @load "KOmegaNN/WallNormNN_Flux.bson" network
@@ -31,13 +31,6 @@ includet("KOmegaNN/nutw_struct.jl")
 @load "WallNormNN_p.bson" parameters
 @load "NNmean.bson" data_mean
 @load "NNstd.bson" data_std
-
-## JL: do I need this bit?? ##
-(bc::Inflow)(vec, t, i) = begin
-    velocity = @view bc.output[:,i]
-    return @inbounds SVector{3}(velocity[1], velocity[2], velocity[3])
-    # return @inbounds SVector{3}(velocity)
-end
 
 backend = CPU(); # activate_multithread(backend)
 mesh_dev = mesh; workgroup = 1024
