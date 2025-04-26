@@ -19,14 +19,14 @@ end
 
 mag(vector) = sqrt(vector[1]^2 + vector[2]^2 + vector[3]^2)
 
-@generated correct_production_NN!(P, BC, eqnModel, component, faces, cells, facesID_range, time, config) = begin 
+@generated correct_production_NN!(P, fieldBCs, eqnModel, model, config) = begin 
     BCs = fieldBCs.parameters
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
         BC = BCs[i]
         if BC <: NeumannFunction 
             call = quote
-                update_user_boundary!(P, BC, eqnModel, component, faces, cells, facesID_range, time, config) 
+                update_user_boundary!(P, fieldsBCs[$i], eqnModel, model, config) 
             end
             push!(func_calls, call)
         end
@@ -38,7 +38,7 @@ mag(vector) = sqrt(vector[1]^2 + vector[2]^2 + vector[3]^2)
 end
 
 XCALibre.Discretise.update_user_boundary!(
-    P, BC::NeumannFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNKWallFunction} = begin
+    P, BC::NeumannFunction{I,V}, eqnModel, model, config ) where{I,V <:NNKWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware
