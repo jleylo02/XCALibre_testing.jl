@@ -1,15 +1,11 @@
-using Zygote
-
-y_plus(k, nu, y, cmu) = cmu^0.25*y*sqrt(k)/nu
-
-sngrad(Ui, Uw, delta, normal) = begin
-    Udiff = (Ui - Uw)
-    Up = Udiff - (Udiff⋅normal)*normal # parallel velocity difference
-    grad = Up/delta
-    return grad
+struct NNKWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
+    input::I # vector to hold input yplus value
+    output::O # vector to hold network prediction
+    gradient::G # vector to hold scaled gradient
+    network::N # neural network
+    steady::T # this will need to be false to run at every timestep
 end
-
-mag(vector) = sqrt(vector[1]^2 + vector[2]^2 + vector[3]^2)
+Adapt.@adapt_structure NNKWallFunction
 
 @generated correct_production_NN!(P, fieldBCs, eqnModel, model, config) = begin 
     BCs = fieldBCs.parameters
@@ -18,7 +14,7 @@ mag(vector) = sqrt(vector[1]^2 + vector[2]^2 + vector[3]^2)
         BC = BCs[i]
         if BC <: NeumannFunction 
             call = quote
-                update_user_boundary!(P, fieldsBCs[$i], eqnModel, model, config) 
+                update_user_boundary!(P, fieldBCs[$i], eqnModel, model, config) 
             end
             push!(func_calls, call)
         end
@@ -29,7 +25,7 @@ mag(vector) = sqrt(vector[1]^2 + vector[2]^2 + vector[3]^2)
     end 
 end
 
-XCALibre.Discretise.update_user_boundary!(
+update_user_boundary!(
     P, BC::NeumannFunction{I,V}, eqnModel, model, config ) where{I,V <:NNKWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
@@ -100,6 +96,14 @@ end
     b[cID] = b[cID] - Pk[cID]*Volume + values[cID]*Volume # JL: this is what needs to be done once the model is passed
 end
 
+struct NNNutwWallFunction{I,O,N,T} <: XCALibreUserFunctor
+    input::I # vector to hold input yplus value
+    output::O # vector to hold network prediction
+    network::N # neural network
+    steady::T # this will need to be false to run at every timestep
+end
+Adapt.@adapt_structure NNNutwWallFunction
+
 @generated correct_eddy_viscosity_NN!(νtf, BC, eqnModel, component, faces, cells, facesID_range, time, config) = begin
     BCs = fieldBCs.parameters
     func_calls = Expr[]
@@ -118,7 +122,7 @@ end
     end 
 end
 
-XCALibre.Discretise.update_user_boundary!(
+update_user_boundary!(
     νtf, BC::NeumannFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNNutwWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
