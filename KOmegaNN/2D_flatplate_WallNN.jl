@@ -16,10 +16,8 @@ grid = "flatplate_2D_highRe.unv"
 mesh_file = joinpath(grids_dir, grid)
 mesh = UNV2D_mesh(mesh_file, scale=0.001)
 
-turb_dir = pkgdir(XCALibre, "src/ModelPhysics/Turbulence")
-turb = "RANS_kOmegaNN_functions.jl"
-turb_file = joinpath(turb_dir, turb)
-includet(turb_file)
+includet("KOmegaNN/k_struct.jl")
+includet("KOmegaNN/nutw_struct.jl")
 # Using Flux NN
 # includet("KOmegaNN_Flux.jl")
 @load "KOmegaNN/WallNormNN_Flux.bson" network
