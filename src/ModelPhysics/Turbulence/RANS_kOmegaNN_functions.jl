@@ -1,12 +1,4 @@
 using Zygote
-struct NNKWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
-    input::I # vector to hold input yplus value
-    output::O # vector to hold network prediction
-    gradient::G # vector to hold scaled gradient
-    network::N # neural network
-    steady::T # this will need to be false to run at every timestep
-end
-Adapt.@adapt_structure NNKWallFunction
 
 y_plus(k, nu, y, cmu) = cmu^0.25*y*sqrt(k)/nu
 
@@ -108,34 +100,6 @@ end
     b[cID] = b[cID] - Pk[cID]*Volume + values[cID]*Volume # JL: this is what needs to be done once the model is passed
 end
 
-# K Functor
-k_w= NNKWallFunction(
-    input,
-    output, 
-    gradient, 
-    network, 
-    false
-)
-
-struct NNNutwWallFunction{I,O,N,T} <: XCALibreUserFunctor
-    input::I # vector to hold input yplus value
-    output::O # vector to hold network prediction
-    network::N # neural network
-    steady::T # this will need to be false to run at every timestep
-end
-Adapt.@adapt_structure NNNutwWallFunction
-
-y_plus(k, nu, y, cmu) = cmu^0.25*y*sqrt(k)/nu
-
-sngrad(Ui, Uw, delta, normal) = begin
-    Udiff = (Ui - Uw)
-    Up = Udiff - (Udiff⋅normal)*normal # parallel velocity difference
-    grad = Up/delta
-    return grad
-end
-
-mag(vector) = sqrt(vector[1]^2 + vector[2]^2 + vector[3]^2)
-
 @generated correct_eddy_viscosity_NN!(νtf, BC, eqnModel, component, faces, cells, facesID_range, time, config) = begin
     BCs = fieldBCs.parameters
     func_calls = Expr[]
@@ -204,11 +168,3 @@ end
     nutw = nuc.*(input./output)
     values[fID] = nutw
 end
-
-# Nutw Functor
-nut_w= NNNutwWallFunction(
-    input,
-    output,  
-    network, 
-    false
-)
