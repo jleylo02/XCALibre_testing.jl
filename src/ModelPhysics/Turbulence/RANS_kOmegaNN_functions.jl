@@ -7,14 +7,14 @@ struct NNKWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
 end
 Adapt.@adapt_structure NNKWallFunction
 
-@generated correct_production_NN!(P, fieldBCs, eqnModel, model, config) = begin 
+@generated correct_production_NN!(fieldBCs, eqnModel, component, faces, cells, facesID_range, time, config) = begin 
     BCs = fieldBCs.parameters
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
         BC = BCs[i]
         if BC <: NeumannFunction 
             call = quote
-                update_user_boundary!(P, fieldBCs[$i], eqnModel, model, config) 
+                update_user_boundary!(fieldBCs[$i], eqnModel, component, faces, cells, facesID_range, time, config) 
             end
             push!(func_calls, call)
         end
@@ -26,7 +26,7 @@ Adapt.@adapt_structure NNKWallFunction
 end
 
 update_user_boundary!(
-    P, BC::NeumannFunction{I,V}, eqnModel, model, config ) where{I,V <:NNKWallFunction} = begin
+    BC::NeumannFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNKWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware
@@ -104,14 +104,14 @@ struct NNNutwWallFunction{I,O,N,T} <: XCALibreUserFunctor
 end
 Adapt.@adapt_structure NNNutwWallFunction
 
-@generated correct_eddy_viscosity_NN!(νtf, BC, eqnModel, component, faces, cells, facesID_range, time, config) = begin
+@generated correct_eddy_viscosity_NN!(fieldBCs, eqnModel, component, faces, cells, facesID_range, time, config) = begin
     BCs = fieldBCs.parameters
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
         BC = BCs[i]
         if BC <: NeumannFunction # JL: This may have to change when new Neumann type is defined
             call = quote
-                update_user_boundary!(νtf, BC, eqnModel, component, faces, cells, facesID_range, time, config) # JL: args here must mate those in the generated function
+                update_user_boundary!(fieldBCs[$i], eqnModel, component, faces, cells, facesID_range, time, config) # JL: args here must mate those in the generated function
             end
             push!(func_calls, call)
         end
@@ -123,7 +123,7 @@ Adapt.@adapt_structure NNNutwWallFunction
 end
 
 update_user_boundary!(
-    νtf, BC::NeumannFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNNutwWallFunction} = begin
+    BC::NeumannFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNNutwWallFunction} = begin
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware
