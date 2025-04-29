@@ -64,25 +64,25 @@ update_user_boundary!(
     # Execute apply boundary conditions kernel
     kernel_range = length(facesID_range)
     kernel! = _update_user_boundary!(backend, workgroup, kernel_range)
-    kernel!(P.values, BC, fluid, momentum, turbulence, eqnModel, component, faces, cells, facesID_range, 
-    start_ID, boundary_cellsID, time, config, ndrange=kernel_range)
+    kernel!(BC, fluid, momentum, turbulence, eqnModel, component, faces, cells, facesID_range, 
+    start_ID, boundary_cellsID, time, config, ndrange=kernel_range, colval, rowptr, nzval, b)
 end
 
 # Using Flux NN
-@kernel function _update_user_boundary!(values, BC, fluid, momentum, turbulence, eqnModel, component, 
-    faces, cells, facesID_range, start_ID, boundary_cellsID, time, config)
+@kernel function _update_user_boundary!(BC, fluid, momentum, turbulence, eqnModel, component, 
+    faces, cells, facesID_range, start_ID, boundary_cellsID, time, config, colval, rowptr, nzval, b)
     i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
     
     (; input, output, gradient) = BC.value 
     (; nu) = fluid
     (; U) = momentum
-    (; k) = turbulence
+    (; k, Pk) = turbulence
 
-    Pk = model.turbulence.Pk
     Uw = SVector{3}(0.0,0.0,0.0)
     cID = boundary_cellsID[fID]
     face = faces[fID]
+    volume = cells[cID].volume
     nuc = nu[cID]
     (; delta, normal)= face
     cmu = 0.09
@@ -92,8 +92,16 @@ end
     dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
     nutw = nuc.*(input./output)
     mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
-    values[cID] = (nutw).*mag_grad_U.*dUdy # corrected Pk
-    b[cID] = b[cID] - Pk[cID]*Volume + values[cID]*Volume # JL: this is what needs to be done once the model is passed
+    Pk_corrected[cID] = (nutw).*mag_grad_U.*dUdy
+
+    z = zero(eltype(nzval))
+    for nzi ∈ rowptr[cID]:(rowptr[cID+1] - 1)
+        nzval[nzi] = z
+    end
+    cIndex = spindex(rowptr, colval, cID, cID)
+    nzval[cIndex] = one(eltype(nzval))
+
+    b[cID] = b[cID] - Pk[cID]*volume + Pk_corrected[cID]*volume # JL: this is what needs to be done once the model is passed
 end
 
 struct NNNutwWallFunction{I,O,N,T} <: XCALibreUserFunctor
@@ -146,8 +154,7 @@ update_user_boundary!(
 
     # Execute apply boundary conditions kernel
     kernel! = _update_user_boundary!(backend, workgroup)
-    kernel!(BC, eqnModel, component, faces, cells, facesID_range, time, config, 
-    νtf.values, fluid, turbulence, boundary_cellsID, start_ID, ndrange=length(facesID_range))
+    kernel!(BC, eqnModel, component, faces, cells, facesID_range, time, config, fluid, turbulence, boundary_cellsID, start_ID, ndrange=length(facesID_range))
 end
 
 # Using Flux NN
@@ -158,9 +165,8 @@ end
     
     (; input, output) = BC.value 
     (; nu) = fluid
-    (; k) = turbulence
+    (; k, nutf) = turbulence
     
-    Uw = SVector{3}(0.0,0.0,0.0)
     cID = boundary_cellsID[fID]
     face = faces[fID]
     nuc = nu[cID]
@@ -170,5 +176,5 @@ end
     input = (yplus .- data_mean) ./ data_std
         
     nutw = nuc.*(input./output)
-    values[fID] = nutw
+    nutf[fID] = nutw
 end
