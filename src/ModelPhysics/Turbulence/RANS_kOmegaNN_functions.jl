@@ -7,23 +7,25 @@ struct NNKWallFunction{I,O,G,N,T} <: XCALibreUserFunctor
 end
 Adapt.@adapt_structure NNKWallFunction
 
-@generated correct_production_NN!(fieldBCs, eqnModel, component, faces, cells, facesID_range, time, config) = begin 
-    BCs = fieldBCs.parameters
-    func_calls = Expr[]
-    for i ∈ eachindex(BCs)
-        BC = BCs[i]
-        if BC <: NeumannFunction 
-            call = quote
-                update_user_boundary!(fieldBCs[$i], eqnModel, component, faces, cells, facesID_range, time, config) 
-            end
-            push!(func_calls, call)
-        end
-    end
-    quote
-    $(func_calls...)
-    nothing
-    end 
-end
+# Don't implement this separately do this directly in correct produciton as part of the original code base, and you don't want to call update_user_boundary there, just a specilaised bersion of set produciton
+
+# @generated correct_production_NN!(fieldBCs, eqnModel, component, faces, cells, facesID_range, time, config) = begin 
+#     BCs = fieldBCs.parameters
+#     func_calls = Expr[]
+#     for i ∈ eachindex(BCs)
+#         BC = BCs[i]
+#         if BC <: NeumannFunction 
+#             call = quote
+#                 update_user_boundary!(fieldBCs[$i], eqnModel, component, faces, cells, facesID_range, time, config) 
+#             end
+#             push!(func_calls, call)
+#         end
+#     end
+#     quote
+#     $(func_calls...)
+#     nothing
+#     end 
+# end
 
 update_user_boundary!(
     BC::NeumannFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNKWallFunction} = begin
@@ -107,31 +109,33 @@ end
     b[cID] = b[cID] - Pk[cID]*volume + Pk_corrected[cID]*volume # JL: this is what needs to be done once the model is passed
 end
 
-struct NNNutwWallFunction{I,O,N,T} <: XCALibreUserFunctor
-    input::I # vector to hold input yplus value
-    output::O # vector to hold network prediction
-    network::N # neural network
-    steady::T # this will need to be false to run at every timestep
-end
-Adapt.@adapt_structure NNNutwWallFunction
+# None of the code below is needed, you just need to provide an specialised version of correct_wall_nut!
 
-@generated correct_eddy_viscosity_NN!(fieldBCs, eqnModel, component, faces, cells, facesID_range, time, config) = begin
-    BCs = fieldBCs.parameters
-    func_calls = Expr[]
-    for i ∈ eachindex(BCs)
-        BC = BCs[i]
-        if BC <: NeumannFunction # JL: This may have to change when new Neumann type is defined
-            call = quote
-                update_user_boundary!(fieldBCs[$i], eqnModel, component, faces, cells, facesID_range, time, config) # JL: args here must mate those in the generated function
-            end
-            push!(func_calls, call)
-        end
-    end
-    quote
-    $(func_calls...)
-    nothing
-    end 
-end
+# struct NNNutwWallFunction{I,O,N,T} <: XCALibreUserFunctor
+#     input::I # vector to hold input yplus value
+#     output::O # vector to hold network prediction
+#     network::N # neural network
+#     steady::T # this will need to be false to run at every timestep
+# end
+# Adapt.@adapt_structure NNNutwWallFunction
+
+# @generated correct_eddy_viscosity_NN!(fieldBCs, eqnModel, component, faces, cells, facesID_range, time, config) = begin
+#     BCs = fieldBCs.parameters
+#     func_calls = Expr[]
+#     for i ∈ eachindex(BCs)
+#         BC = BCs[i]
+#         if BC <: NeumannFunction # JL: This may have to change when new Neumann type is defined
+#             call = quote
+#                 update_user_boundary!(fieldBCs[$i], eqnModel, component, faces, cells, facesID_range, time, config) # JL: args here must mate those in the generated function
+#             end
+#             push!(func_calls, call)
+#         end
+#     end
+#     quote
+#     $(func_calls...)
+#     nothing
+#     end 
+# end
 
 update_user_boundary!(
     BC::NeumannFunction{I,V}, eqnModel, component, faces, cells, facesID_range, time, config ) where{I,V <:NNNutwWallFunction} = begin
