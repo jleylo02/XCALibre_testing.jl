@@ -56,12 +56,14 @@ update_user_boundary!(
     
 
     # calcualte gradient du+/dy+
+
+    # 2025-04-30 You don't need to redefine this here, I think you have already pass this function to your NNKWallFunction struct when setting up the case, you can just access it directly from the variable BC e.g. BC.gradient, in fact, you already have it in line 54 :-)
     compute_gradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1] # needs to be Zygote.jacobian for Lux model
     # for loop to calculate gradient for all values in input
     gradient = [compute_gradient(input[:, i]) for i in 1:size(input, 2)]
     gradient = hcat(gradient...)
 
-    # Execute apply boundary conditions kernel
+    #= 2025-04-03 The code you have implemented in the function/kernel below, would not be needed here, you should do this update in the correct_production function=#
     kernel_range = length(facesID_range)
     kernel! = _update_user_boundary!(backend, workgroup, kernel_range)
     kernel!(BC, fluid, momentum, turbulence, eqnModel, component, faces, cells, facesID_range, 
@@ -101,6 +103,7 @@ end
     cIndex = spindex(rowptr, colval, cID, cID)
     nzval[cIndex] = one(eltype(nzval))
 
+    #= 2025-04-30 This approach was right for the approach where you don't call correct_production!. This was needed if you want to make the correction as part of the apply_boundary_conditions function. Two ways to achieve thi same thing. Although, looking at the codebase again, I think that implementing this as part of the correct_production! is the neater way. Most of the code here would be applied there instead! =# 
     b[cID] = b[cID] - Pk[cID]*volume + Pk_corrected[cID]*volume # JL: this is what needs to be done once the model is passed
 end
 

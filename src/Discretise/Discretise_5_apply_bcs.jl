@@ -43,6 +43,14 @@ function _apply_boundary_conditions!(
         # update user defined boundary storage (if needed)
         # update_user_boundary!(BC, faces, cells, facesID_range, time, config)
         #= The `model` passed here is defined in ModelFramework_0_types.jl line 87. It has two properties: terms and sources which define the equation being solved =#
+
+        #= 2025-04-30 
+        If you remember we changed the signature of this function so that you would not need to modify the correct_production! within the KOmega model. However, you started changing the implementation there as well. Both approaches would work, but you need to pick one. I am happy to keep this signature, if we feel that having access to eqnModel would be generally useful, but this would be a breaking change. 
+        
+        If you want to continue the implementation by adapting the correct_production! the purpose of this function is now different and you don't need to modify Pk here. Notice this function is called for every boundary condition applied (as part of the call to apply_boundary_conditions! in the KOmega model around line 208)
+        
+        If so, this function should only be used to update the internal state of your Functor as it was intended to behave initially. In your case, I pressume that the only thing you need to update is the yPlus values since they depend on k, but maybe something else? Assuming this is what you will do, I have added a few more on your implementation of this function, in the RANS_KOmengaNN_funcitons.jl file
+        =#
         update_user_boundary!(
             BC, eqnModel, component, faces, cells, facesID_range, time, config)
         

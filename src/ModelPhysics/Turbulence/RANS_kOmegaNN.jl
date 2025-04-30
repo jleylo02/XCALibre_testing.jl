@@ -179,7 +179,11 @@ function turbulence!(
     
     @. Pω.values = rho.values*coeffs.α1*Pk.values
     @. Pk.values = rho.values*nut.values*Pk.values
+
+    #= Here is where the production is updated. The purpose of the correct_production! function is to check if any of the boundaries is KWallFunction, if so, the production is calculated according to the wall function approach. =#
     correct_production!(Pk, k.BCs, model, S.gradU, config) # Must be after previous line 
+
+    # 2025-04-30 This call cannot work because these variables are not defined above: eqnModel, component, faces, cells, facesID_range. The mesh related ones (faces, cells, facesID_range), can be extraced from Pk for example. eqnModel should be k_equ from line 60 above and component should be set to "nothing" for scalar fields e.g. in line 196. Hoever, you don't need this signature anymore if you choose to adapt this implementation. Instead, you would have to change a bit the logic of the correct_production! function in the RANS_function.jl file. 
     correct_production_NN!(k.BCs, eqnModel, component, faces, cells, facesID_range, time, config) # JL: has to have this signature
     @. Dωf.values = rho.values*coeffs.β1*omega.values
     @. mueffω.values = rhof.values * (nuf.values + coeffs.σω*nutf.values)
