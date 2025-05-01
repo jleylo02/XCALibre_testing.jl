@@ -51,7 +51,7 @@ end
     k = ScalarField(mesh)
     omega = ScalarField(mesh)
     nut = ScalarField(mesh)
-    Pk = ScalarField(mesh) # JL: create Pk here
+    Pk = ScalarField(mesh) 
     kf = FaceScalarField(mesh)
     omegaf = FaceScalarField(mesh)
     nutf = FaceScalarField(mesh)
@@ -82,7 +82,7 @@ function initialise(
     turbulence::KOmegaNN, model::Physics{T,F,M,Tu,E,D,BI}, mdotf, peqn, config
     ) where {T,F,M,Tu,E,D,BI}
 
-    (; k, omega, nut, Pk) = turbulence # JL: also have to extract Pk here
+    (; k, omega, nut, Pk) = turbulence 
     (; rho) = model.fluid
     (; solvers, schemes, runtime) = config
     mesh = mdotf.mesh
@@ -182,9 +182,6 @@ function turbulence!(
 
     #= Here is where the production is updated. The purpose of the correct_production! function is to check if any of the boundaries is KWallFunction, if so, the production is calculated according to the wall function approach. =#
     correct_production!(Pk, k.BCs, model, S.gradU, config) # Must be after previous line 
-
-    # 2025-04-30 This call cannot work because these variables are not defined above: eqnModel, component, faces, cells, facesID_range. The mesh related ones (faces, cells, facesID_range), can be extraced from Pk for example. eqnModel should be k_equ from line 60 above and component should be set to "nothing" for scalar fields e.g. in line 196. Hoever, you don't need this signature anymore if you choose to adapt this implementation. Instead, you would have to change a bit the logic of the correct_production! function in the RANS_function.jl file. 
-    correct_production_NN!(k.BCs, eqnModel, component, faces, cells, facesID_range, time, config) # JL: has to have this signature
     @. Dωf.values = rho.values*coeffs.β1*omega.values
     @. mueffω.values = rhof.values * (nuf.values + coeffs.σω*nutf.values)
     @. Dkf.values = rho.values*coeffs.β⁺*omega.values
@@ -207,7 +204,7 @@ function turbulence!(
     # Solve k equation
     # prev .= k.values
     discretise!(k_eqn, k, config)
-    apply_boundary_conditions!(k_eqn, k.BCs, nothing, time, config) # JL: this is where code will be injected
+    apply_boundary_conditions!(k_eqn, k.BCs, nothing, time, config) 
     # implicit_relaxation!(k_eqn, k.values, solvers.k.relax, nothing, config)
     implicit_relaxation_diagdom!(k_eqn, k.values, solvers.k.relax, nothing, config)
     update_preconditioner!(k_eqn.preconditioner, mesh, config)
@@ -219,7 +216,6 @@ function turbulence!(
     interpolate!(nutf, nut, config)
     correct_boundaries!(nutf, nut, nut.BCs, time, config)
     correct_eddy_viscosity!(nutf, nut.BCs, model, config) 
-    correct_eddy_viscosity_NN!(nut.BCs, eqnModel, component, faces, cells, facesID_range, time, config)
 
     state.residuals = ((:k , k_res),(:omega, ω_res))
     state.converged = k_res < solvers.k.convergence && ω_res < solvers.omega.convergence
