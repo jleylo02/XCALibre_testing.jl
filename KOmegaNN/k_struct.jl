@@ -8,5 +8,3 @@ struct NNKWallFunction{I,O,G,N,M,S,T} <: XCALibreUserFunctor
     steady::T # this will need to be false to run at every timestep
 end
 Adapt.@adapt_structure NNKWallFunction
-
-# need to add the data mean and std 
