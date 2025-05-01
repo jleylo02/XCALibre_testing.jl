@@ -350,7 +350,7 @@ end
     dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
     nutw = nuc.*(input./output)
     mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
-    values[cID] = vec(nutw.*mag_grad_U.*dUdy)
+    values[cID] = nutw.*mag_grad_U.*dUdy
 end
 
 @generated function correct_eddy_viscosity!(νtf, nutBCs, model, config)
