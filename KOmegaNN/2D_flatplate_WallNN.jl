@@ -17,7 +17,6 @@ mesh_file = joinpath(grids_dir, grid)
 mesh = UNV2D_mesh(mesh_file, scale=0.001)
 
 includet("k_struct.jl")
-includet("nutw_struct.jl")
 # Using Flux NN
 # includet("KOmegaNN_Flux.jl")
 @load "KOmegaNN/WallNormNN_Flux.bson" network
