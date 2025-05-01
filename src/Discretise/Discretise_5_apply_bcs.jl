@@ -51,6 +51,7 @@ function _apply_boundary_conditions!(
         
         If so, this function should only be used to update the internal state of your Functor as it was intended to behave initially. In your case, I pressume that the only thing you need to update is the yPlus values since they depend on k, but maybe something else? Assuming this is what you will do, I have added a few more on your implementation of this function, in the RANS_KOmengaNN_funcitons.jl file
         =#
+        # JL: I think that modifying the correct_production! is the better way to do this, so I think that we can revert this function back and avoid the breaking change
         update_user_boundary!(
             BC, eqnModel, component, faces, cells, facesID_range, time, config)
         
