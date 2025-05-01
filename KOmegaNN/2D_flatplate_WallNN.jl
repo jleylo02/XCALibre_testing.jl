@@ -62,16 +62,6 @@ k_w= NNKWallFunction(
 
 k_w_dev = k_w
 
-# Nutw Functor
-nut_w= NNNutwWallFunction(
-    input,
-    output,
-    network,
-    false
-)
-
-nut_w_dev = nut_w
-
 model = Physics(
     time = Steady(),
     fluid = Fluid{Incompressible}(nu = nu),
@@ -113,7 +103,7 @@ model = Physics(
 @assign! model turbulence nut (
     Dirichlet(:inlet, k_inlet/ω_inlet),
     Neumann(:outlet, 0.0),
-    NeumannFunction(:wall, nut_w_dev), 
+    NeumannFunction(:wall, k_w_dev), 
     Neumann(:top, 0.0)
 )
 
