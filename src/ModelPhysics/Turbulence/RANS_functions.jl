@@ -236,26 +236,10 @@ end
     BCs = fieldBCs.parameters
     func_calls = Expr[]
     for i ∈ eachindex(BCs)
-        BC = BCs[i]
-        #= You can remove this logic and use multiple dispatch to pick the correct function implementation for set_production below. The call signature will have to change as well though. If you remember when we met online, I quickly updated the implementation for correct_eddy_viscosity! to use multiple dispatch, essentially, you need to replicate the same approach here. See line 312 or so below.
-        
-        The nice thing about it is that the call signature for set_production below would already allow you to specialise the function to disptance on fieldBCs e.g.  
-
-        set_production!(P, BC::NNKWallFunction, model, gradU, config) = your implementation  
-        
-        Dont forget to also implement the "catch all" version of set_production e.g.
-
-        set_production!(P, BC, model, gradU, config) = nothing
-        
-        To finish your implementation you will need to also provide a specialised version for the function to correct_nut_wall!(νtf, BC::NNKWallFunction, model, config)
-
-        =#
-        if BC <: KWallFunction # use multiple dispatch instead of if statements
-            call = quote
-                set_production!(P, fieldBCs[$i], model, gradU, config)
-            end
-            push!(func_calls, call)
+        call = quote
+            set_production!(P, fieldBCs[$i], model, gradU, config)
         end
+        push!(func_calls, call)
     end
     quote
     $(func_calls...)
@@ -263,7 +247,9 @@ end
     end 
 end
 
-function set_production!(P, BC, model, gradU, config)
+set_production!(P, BC, model, gradU, config) = nothing
+
+function set_production!(P, BC::KWallFunction, model, gradU, config)
     # backend = _get_backend(mesh)
     (; hardware) = config
     (; backend, workgroup) = hardware

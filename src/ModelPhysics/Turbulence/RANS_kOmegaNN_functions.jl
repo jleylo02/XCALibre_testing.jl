@@ -56,11 +56,6 @@ update_user_boundary!(
     (; output, input, network, gradient) = BC.value
     output = network(input) 
     
-
-    # calcualte gradient du+/dy+
-
-    # 2025-04-30 You don't need to redefine this here, I think you have already pass this function to your NNKWallFunction struct when setting up the case, you can just access it directly from the variable BC e.g. BC.gradient, in fact, you already have it in line 54 :-)
-    
     #= 2025-04-03 The code you have implemented in the function/kernel below, would not be needed here, you should do this update in the correct_production function=#
     kernel_range = length(facesID_range)
     kernel! = _update_user_boundary!(backend, workgroup, kernel_range)
