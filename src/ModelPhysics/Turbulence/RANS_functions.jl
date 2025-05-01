@@ -333,7 +333,7 @@ end
     i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
 
-    (; input, output, gradient) = BC.value 
+    (; input, output, gradient, data_mean, data_std) = BC.value 
     (; nu) = fluid
     (; U) = momentum
     (; k) = turbulence
@@ -350,7 +350,7 @@ end
     dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
     nutw = nuc.*(input./output)
     mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
-    values[cID] = (nutw).*mag_grad_U.*dUdy
+    values[cID] = vec(nutw.*mag_grad_U.*dUdy)
 end
 
 @generated function correct_eddy_viscosity!(νtf, nutBCs, model, config)
@@ -447,7 +447,7 @@ end
 i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
     
-    (; input, output) = BC.value 
+    (; input, output, data_mean, data_std) = BC.value  
     (; nu) = fluid
     (; k, nutf) = turbulence
     
