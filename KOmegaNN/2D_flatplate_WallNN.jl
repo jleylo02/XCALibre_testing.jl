@@ -47,11 +47,15 @@ ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
 input = Float32.(zeros(1,ncells)) 
 input = (input .- data_mean) ./ data_std
 output = network(input)
+compute_gradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1] # needs to be Zygote.jacobian for Lux model
+# for loop to calculate gradient for all values in input
+gradient = [compute_gradient(input[:, i]) for i in 1:size(input, 2)]
+gradient = hcat(gradient...)
 
 k_w= NNKWallFunction(
     input,
     output,
-    similar(input), 
+    gradient, 
     network, 
     false
 )
