@@ -92,6 +92,13 @@ k_w = NNKWallFunction(
     input, output, NNgradient, network, model.turbulence.k, nu, data_mean, data_std, false
 )
 
+
+@. input= (0.09^0.25)*input*sqrt(model.turbulence.k.values[wall_faceIDs]')/nu
+@. input = (input - data_mean)/data_std
+
+output = network(input)
+
+
 @assign! model momentum U (
     Dirichlet(:inlet, velocity),
     Neumann(:outlet, 0.0),
