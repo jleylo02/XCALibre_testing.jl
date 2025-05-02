@@ -2,6 +2,7 @@
 using XCALibre
 # using CUDA
 using Flux
+using Lux
 using BSON: @load
 using StaticArrays
 using Statistics
@@ -42,12 +43,12 @@ Re = velocity[1]*1/nu
 k_inlet = 0.375
 ω_inlet = 1000
 
+## Functor inputs using Flux.jl ##
 ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
 input = Float32.(zeros(1,ncells)) 
 input = (input .- data_mean) ./ data_std
 output = network(input)
-compute_gradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1] # needs to be Zygote.jacobian for Lux model
-# for loop to calculate gradient for all values in input
+compute_gradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1]
 gradient = [compute_gradient(input[:, i]) for i in 1:size(input, 2)]
 gradient = hcat(gradient...)
 
@@ -60,6 +61,28 @@ k_w= NNKWallFunction(
     data_std, 
     false
 )
+#############
+
+## Functor setup using Lux.jl
+ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
+input = Float32.(zeros(1,ncells)) 
+input = (input .- data_mean) ./ data_std
+output, new_layer_states = network(y_train_n, parameters, layer_states)
+compute_gradient(y_plus) = Zygote.jacobian(x -> network(x, parameters, layer_states)[1], y_plus)[1]
+gradients = [compute_gradient(input[:, i]) for i in 1:size(input, 2)] # use of size instead of eachindex isnt ideal, but will not work with the latter
+gradients = gradients/data_std # scales gradient back to unnormalised
+gradients = hcat(gradients...)
+
+k_w= NNKWallFunction(
+    input,
+    output,
+    gradient, 
+    network,
+    data_mean,
+    data_std, 
+    false
+)
+##
 
 k_w_dev = k_w
 
