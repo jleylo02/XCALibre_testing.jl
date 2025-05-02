@@ -9,9 +9,9 @@ XCALibre.Discretise.update_user_boundary!(
     # kernel!(BC, eqnModel, component, faces, cells, facesID_range, time, ndrange=kernel_range) 
 
     # Actually, here you will need to update your output vector field
-    (; input, k, nu, network, output) = BC.value
+    (; input, k, nu, network, output, cmu) = BC.value
 
-    @. input= (0.09^0.25)*input*sqrt(k.values[facesID_range]')/nu
+    @. input= (cmu^0.25)*input*sqrt(k.values[facesID_range]')/nu
     @. input_s = (input - data_mean)/data_std # here we scale to use properly with network, creating a local variable so not to overwrite the y_plus values
     output .= network(input_s) # updateing U+
     nothing
@@ -53,7 +53,7 @@ end
     i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
 
-    (; input, output, gradient, data_mean, data_std) = BC.value 
+    (; input, output, gradient, data_mean, data_std, cmu) = BC.value 
     (; nu) = fluid
     (; U) = momentum
     (; k) = turbulence
@@ -63,7 +63,6 @@ end
     face = faces[fID]
     nuc = nu[cID]
     (; delta, normal)= face
-    cmu = 0.09 # minor thing, maybe you want to give this to your user
     yplus = XCALibre.ModelPhysics.y_plus(k[cID], nuc, delta, cmu)
     input = (yplus .- data_mean) ./ data_std
         

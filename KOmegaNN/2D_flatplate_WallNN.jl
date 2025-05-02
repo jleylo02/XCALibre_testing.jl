@@ -43,6 +43,7 @@ nu = 1e-5
 Re = velocity[1]*1/nu
 k_inlet = 0.375
 ω_inlet = 1000
+cmu = 0.09
 
 # here we need a function to extract the y values of all boundary cells for that patch
 patchID = 3 # this is the wall ID
