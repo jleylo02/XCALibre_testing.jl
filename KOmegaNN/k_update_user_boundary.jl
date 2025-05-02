@@ -68,7 +68,7 @@ end
         
     dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
     nutw = nuc.*(input./output)
-    mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal))
+    mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal)) # JL: add the XCALibre.ModelPhysics to this line also?
     values[cID] = nutw.*mag_grad_U.*dUdy
 end
 
@@ -105,7 +105,7 @@ end
 i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
     
-    (; input, output, data_mean, data_std) = BC.value  
+    (; input, output, data_mean, data_std, cmu) = BC.value  
     (; nu) = fluid
     (; k, nutf) = turbulence
     
@@ -113,8 +113,7 @@ i = @index(Global)
     face = faces[fID]
     nuc = nu[cID]
     (; delta, normal)= face
-    cmu = 0.09
-    yplus = y_plus(k[cID], nuc, delta, cmu)
+    yplus = XCALibre.ModelPhysics.y_plus(k[cID], nuc, delta, cmu)
     input = (yplus .- data_mean) ./ data_std
         
     nutw = nuc.*(input./output)
