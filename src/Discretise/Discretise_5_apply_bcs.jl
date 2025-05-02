@@ -53,7 +53,7 @@ function _apply_boundary_conditions!(
         =#
         # JL: I think that modifying the correct_production! is the better way to do this, so I think that we can revert this function back and avoid the breaking change
         update_user_boundary!(
-            BC, eqnModel, component, faces, cells, facesID_range, time, config)
+            BC, faces, cells, facesID_range, time, config)
         
         # Execute apply boundary conditions kernel
         kernel_range = length(facesID_range)
@@ -69,7 +69,7 @@ function _apply_boundary_conditions!(
 end
 
 update_user_boundary!(
-    BC::AbstractBoundary, eqnModel, component, faces, cells, facesID_range, time, config) = nothing
+    BC::AbstractBoundary, faces, cells, facesID_range, time, config) = nothing
 
 # Function to prevent redundant CPU copy
 

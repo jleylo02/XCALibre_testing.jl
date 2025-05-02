@@ -2,7 +2,7 @@
 using XCALibre
 # using CUDA
 using Flux
-using Lux
+# using Lux
 using BSON: @load
 using StaticArrays
 using Statistics
@@ -18,6 +18,7 @@ mesh_file = joinpath(grids_dir, grid)
 mesh = UNV2D_mesh(mesh_file, scale=0.001)
 
 includet("k_struct.jl")
+includet("k_update_user_boundary.jl")
 # Using Flux NN
 # includet("KOmegaNN_Flux.jl")
 @load "KOmegaNN/WallNormNN_Flux.bson" network
@@ -26,11 +27,11 @@ includet("k_struct.jl")
 
 # Using Lux NN
 # includet("KOmegaNN_Lux.jl")
-@load "WallNormNN_Lux.bson" network
-@load "WallNormNN_ls.bson" layer_states
-@load "WallNormNN_p.bson" parameters
-@load "NNmean.bson" data_mean
-@load "NNstd.bson" data_std
+# @load "WallNormNN_Lux.bson" network
+# @load "WallNormNN_ls.bson" layer_states
+# @load "WallNormNN_p.bson" parameters
+# @load "NNmean.bson" data_mean
+# @load "NNstd.bson" data_std
 
 backend = CPU(); # activate_multithread(backend)
 mesh_dev = mesh; workgroup = 1024
@@ -43,53 +44,46 @@ Re = velocity[1]*1/nu
 k_inlet = 0.375
 ω_inlet = 1000
 
-## Functor inputs using Flux.jl ##
-ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
-input = Float32.(zeros(1,ncells)) 
-input = (input .- data_mean) ./ data_std
-output = network(input)
-compute_gradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1]
-gradient = [compute_gradient(input[:, i]) for i in 1:size(input, 2)]
-gradient = hcat(gradient...)
+# here we need a function to extract the y values of all boundary cells for that patch
+patchID = 3 # this is the wall ID
+wall_faceIDs = mesh.boundaries[patchID].IDs_range
 
-k_w= NNKWallFunction(
-    input,
-    output,
-    gradient, 
-    network,
-    data_mean,
-    data_std, 
-    false
+## Functor inputs using Flux.jl ##
+# ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
+nbfaces = wall_faceIDs |> length
+input = Float32.(zeros(1,nbfaces)) 
+
+for fi ∈ eachindex(wall_faceIDs)
+    fID = wall_faceIDs[fi]
+    face = mesh.faces[fID]
+    input[1,fi] = face.delta
+end
+
+# input = (input .- data_mean) ./ data_std # I don't think this is doing anything
+# output = network(input)
+output = Float32.(zeros(1,nbfaces)) 
+NNgradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1]
+
+NNgradient(input[:, 500]) # this is how you call a single value
+
+k_w = NNKWallFunction(
+    input, output, NNgradient, network, data_mean, data_std, false
 )
-#############
 
 ## Functor setup using Lux.jl
-ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
-input = Float32.(zeros(1,ncells)) 
-input = (input .- data_mean) ./ data_std
-output, new_layer_states = network(y_train_n, parameters, layer_states)
-compute_gradient(y_plus) = Zygote.jacobian(x -> network(x, parameters, layer_states)[1], y_plus)[1]
-gradients = [compute_gradient(input[:, i]) for i in 1:size(input, 2)] # use of size instead of eachindex isnt ideal, but will not work with the latter
-gradients = gradients/data_std # scales gradient back to unnormalised
-gradients = hcat(gradients...)
-
-k_w= NNKWallFunction(
-    input,
-    output,
-    gradient, 
-    network,
-    data_mean,
-    data_std, 
-    false
-)
-##
-
-k_w_dev = k_w
+# ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
+# input = Float32.(zeros(1,ncells)) 
+# input = (input .- data_mean) ./ data_std
+# output, new_layer_states = network(y_train_n, parameters, layer_states)
+# compute_gradient(y_plus) = Zygote.jacobian(x -> network(x, parameters, layer_states)[1], y_plus)[1]
+# gradients = [compute_gradient(input[:, i]) for i in 1:size(input, 2)] # use of size instead of eachindex isnt ideal, but will not work with the latter
+# gradients = gradients/data_std # scales gradient back to unnormalised
+# gradients = hcat(gradients...)
 
 model = Physics(
     time = Steady(),
     fluid = Fluid{Incompressible}(nu = nu),
-    turbulence = RANS{KOmegaNN}(),
+    turbulence = RANS{KOmega}(),
     energy = Energy{Isothermal}(),
     domain = mesh_dev
     )
@@ -112,7 +106,7 @@ model = Physics(
 @assign! model turbulence k (
     Dirichlet(:inlet, k_inlet),
     Neumann(:outlet, 0.0),
-    NeumannFunction(:wall, k_w_dev),
+    NeumannFunction(:wall, k_w),
     # Neumann(:wall, 0.0),
     Neumann(:top, 0.0)
 )
@@ -127,15 +121,15 @@ model = Physics(
 @assign! model turbulence nut (
     Dirichlet(:inlet, k_inlet/ω_inlet),
     Neumann(:outlet, 0.0),
-    NeumannFunction(:wall, k_w_dev), 
+    NeumannFunction(:wall, k_w), 
     Neumann(:top, 0.0)
 )
 
 schemes = (
-    U = set_schemes(divergence=Upwind, gradient=Midpoint),
-    p = set_schemes(divergence=Upwind, gradient=Midpoint),
-    k = set_schemes(divergence=Upwind, gradient=Midpoint),
-    omega = set_schemes(divergence=Upwind, gradient=Midpoint)
+    U = set_schemes(divergence=Upwind, gradient=Orthogonal),
+    p = set_schemes(divergence=Upwind, gradient=Orthogonal),
+    k = set_schemes(divergence=Upwind, gradient=Orthogonal),
+    omega = set_schemes(divergence=Upwind, gradient=Orthogonal)
 )
 
 
@@ -170,7 +164,8 @@ solvers = (
     )
 )
 
-runtime = set_runtime(iterations=500, write_interval=100, time_step=1)
+# runtime = set_runtime(iterations=500, write_interval=100, time_step=1)
+runtime = set_runtime(iterations=1, write_interval=100, time_step=1)
 
 hardware = set_hardware(backend=backend, workgroup=workgroup)
 
