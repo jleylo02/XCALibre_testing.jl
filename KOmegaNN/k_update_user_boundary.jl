@@ -12,8 +12,8 @@ XCALibre.Discretise.update_user_boundary!(
     (; input, k, nu, network, output) = BC.value
 
     @. input= (0.09^0.25)*input*sqrt(k.values[facesID_range]')/nu
-    @. input = (input - data_mean)/data_std # here we scale to use properly with network
-    output .= network(input) # updateing U+
+    @. input_s = (input - data_mean)/data_std # here we scale to use properly with network, creating a local variable so not to overwrite the y_plus values
+    output .= network(input_s) # updateing U+
     nothing
 
 
