@@ -59,16 +59,16 @@ for fi ∈ eachindex(wall_faceIDs)
     input[1,fi] = face.delta
 end
 
+ 
+
 # input = (input .- data_mean) ./ data_std # I don't think this is doing anything
 # output = network(input)
 output = Float32.(zeros(1,nbfaces)) 
+
+output = network(input)
 NNgradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1]
 
 NNgradient(input[:, 500]) # this is how you call a single value
-
-k_w = NNKWallFunction(
-    input, output, NNgradient, network, data_mean, data_std, false
-)
 
 ## Functor setup using Lux.jl
 # ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
@@ -87,6 +87,10 @@ model = Physics(
     energy = Energy{Isothermal}(),
     domain = mesh_dev
     )
+
+k_w = NNKWallFunction(
+    input, output, NNgradient, network, model.turbulence.k, nu, data_mean, data_std, false
+)
 
 @assign! model momentum U (
     Dirichlet(:inlet, velocity),
