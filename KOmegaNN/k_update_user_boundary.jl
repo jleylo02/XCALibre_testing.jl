@@ -62,7 +62,8 @@ end
     # yplusi = yplus[i] # if time allows a quick a dirty performance trick
 
     dUdy_s = gradient(yplus_s[:, i])[1]
-    dUdy = dUdy_s/data_std
+    Uscaling = (cmu^0.25)/nuc*sqrt(k[cID])^2
+    dUdy = (dUdy_s/data_std)*Uscaling
     # dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
     nutw = nuc*(yplus[i]/output[i])
     mag_grad_U = XCALibre.ModelPhysics.mag(
@@ -71,8 +72,8 @@ end
     
 
     if yplus[i] > 11.25
-        values[cID] = (nu[cID] + nutw)*mag_grad_U*dUdy 
-        # values[cID] = nutw*mag_grad_U*dUdy
+        # values[cID] = (nu[cID] + nutw)*mag_grad_U*dUdy 
+        values[cID] = nutw*mag_grad_U*dUdy
     else
         values[cID] = 0.0
     end
