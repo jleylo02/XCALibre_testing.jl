@@ -1,5 +1,5 @@
-struct NNKWallFunction{I,O,G,N,K,K1,M,S,C,Y,Yp,Ys,T} <: XCALibreUserFunctor
-    input::I # vector to hold input y cell values (user space)
+struct NNKWallFunction{O,G,N,K,K1,M,S,C,Y,Yp,Ys,T} <: XCALibreUserFunctor
+    # input::I # vector to hold input y cell values (user space)
     output::O # vector to hold network prediction (U+)
     gradient::G # function to calcuate gradient DU+/dy+
     network::N # neural network

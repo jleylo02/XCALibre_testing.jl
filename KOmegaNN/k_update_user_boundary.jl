@@ -9,51 +9,44 @@ XCALibre.Discretise.update_user_boundary!(
     # kernel!(BC, eqnModel, component, faces, cells, facesID_range, time, ndrange=kernel_range) 
 
     # Actually, here you will need to update your output vector field
-    (; input, k, nu, network, output, cmu) = BC.value
+    (; yplus, yplus_s, y, k, nu, network, output, cmu) = BC.value
 
-    @. input= (cmu^0.25)*input*sqrt(k.values[facesID_range]')/nu
-    @. input_s = (input - data_mean)/data_std # here we scale to use properly with network, creating a local variable so not to overwrite the y_plus values
-    output .= network(input_s) # updateing U+
+    @. yplus = (cmu^0.25)*y*sqrt(k.values[facesID_range]')/nu
+    @. yplus_s = (yplus - data_mean)/data_std # here we scale to use properly with network, creating a local variable so not to overwrite the y_plus values
+    output .= network(yplus_s) # updateing U+
     nothing
 
 
 end
 
 function XCALibre.ModelPhysics.set_production!(P, BC::NeumannFunction, model, gradU, config)
-    # # backend = _get_backend(mesh)
-    # (; hardware) = config
-    # (; backend, workgroup) = hardware
+    (; hardware) = config
+    (; backend, workgroup) = hardware
 
-    # # Deconstruct mesh to required fields
-    # mesh = model.domain
-    # (; faces, boundary_cellsID, boundaries) = mesh
+    # Deconstruct mesh to required fields
+    mesh = model.domain
+    (; faces, boundary_cellsID, boundaries) = mesh
+    (; fluid, momentum, turbulence) = model
 
-    # # Extract physics models
-    # (; fluid, momentum, turbulence) = model
-
-    # # facesID_range = get_boundaries(BC, boundaries)
-    # boundaries_cpu = get_boundaries(boundaries)
-    # facesID_range = boundaries_cpu[BC.ID].IDs_range
-    # start_ID = facesID_range[1]
-
-    # (; output, input, network, gradient) = BC.value
+    # get boundary information
+    boundaries_cpu = get_boundaries(boundaries)
+    facesID_range = boundaries_cpu[BC.ID].IDs_range
+    start_ID = facesID_range[1]
     
-    # # Execute apply boundary conditions kernel
-    # kernel! = _set_production_NN!(backend, workgroup)
-    # kernel!(
-    #     P.values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID, gradU, ndrange=length(facesID_range)
-    # )
+    # Execute apply boundary conditions kernel
+    kernel! = _set_production_NN!(backend, workgroup)
+    kernel!(
+        P.values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID, ndrange=length(facesID_range)
+    )
     nothing
 end
 
-
-
 @kernel function _set_production_NN!(
-    values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID, gradU)
+    values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID)
     i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
 
-    (; input, output, gradient, data_mean, data_std, cmu) = BC.value 
+    (; yplus, yplus_s, y, output, gradient, data_mean, data_std, cmu) = BC.value 
     (; nu) = fluid
     (; U) = momentum
     (; k) = turbulence
@@ -63,39 +56,47 @@ end
     face = faces[fID]
     nuc = nu[cID]
     (; delta, normal)= face
-    yplus = XCALibre.ModelPhysics.y_plus(k[cID], nuc, delta, cmu)
-    input = (yplus .- data_mean) ./ data_std
-        
-    dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
-    nutw = nuc.*(input./output)
-    mag_grad_U = mag(sngrad(U[cID], Uw, delta, normal)) # JL: add the XCALibre.ModelPhysics to this line also?
-    values[cID] = nutw.*mag_grad_U.*dUdy
+    # yplus = XCALibre.ModelPhysics.y_plus(k[cID], nuc, delta, cmu) # might be able to revmoe
+    # input = (yplus .- data_mean) ./ data_std
+
+    # yplusi = yplus[i] # if time allows a quick a dirty performance trick
+
+    dUdy_s = gradient(yplus_s[:, i])[1]
+    dUdy = dUdy_s/data_std
+    # dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
+    nutw = nuc*(yplus[i]/output[i])
+    mag_grad_U = XCALibre.ModelPhysics.mag(
+        XCALibre.ModelPhysics.sngrad(U[cID], Uw, delta, normal)
+        ) # JL: add the XCALibre.ModelPhysics to this line also?
+    
+
+    if yplus[i] > 11.25
+        values[cID] = (nu[cID] + nutw)*mag_grad_U*dUdy 
+        # values[cID] = nutw*mag_grad_U*dUdy
+    else
+        values[cID] = 0.0
+    end
 end
 
 function XCALibre.ModelPhysics.correct_nut_wall!(νtf, BC::NeumannFunction, model, config)
-    # # backend = _get_backend(mesh)
-    # (; hardware) = config
-    # (; backend, workgroup) = hardware
+    (; hardware) = config
+    (; backend, workgroup) = hardware
     
-    # # Deconstruct mesh to required fields
-    # mesh = model.domain
-    # (; faces, boundary_cellsID, boundaries) = mesh
+    # Deconstruct mesh to required fields
+    mesh = model.domain
+    (; faces, boundary_cellsID, boundaries) = mesh
+    (; fluid, turbulence) = model
 
-    # # Extract physics models
-    # (; fluid, turbulence) = model
+    # Get boundary information
+    boundaries_cpu = get_boundaries(boundaries)
+    facesID_range = boundaries_cpu[BC.ID].IDs_range
+    start_ID = facesID_range[1]
 
-    # # facesID_range = get_boundaries(BC, boundaries)
-    # boundaries_cpu = get_boundaries(boundaries)
-    # facesID_range = boundaries_cpu[BC.ID].IDs_range
-    # start_ID = facesID_range[1]
-
-    # (; output, input, network) = BC.value
-
-    # # Execute apply boundary conditions kernel
-    # kernel! = _correct_nut_wall_NN!(backend, workgroup)
-    # kernel!(
-    #     νtf.values, fluid, turbulence, BC, faces, boundary_cellsID, start_ID, ndrange=length(facesID_range)
-    # )
+    # Execute apply boundary conditions kernel
+    kernel! = _correct_nut_wall_NN!(backend, workgroup)
+    kernel!(
+        νtf.values, fluid, turbulence, BC, faces, boundary_cellsID, start_ID, ndrange=length(facesID_range)
+    )
 
     nothing
 end
@@ -105,7 +106,7 @@ end
 i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
     
-    (; input, output, data_mean, data_std, cmu) = BC.value  
+    (; yplus, y, output, gradient, data_mean, data_std, cmu) = BC.value 
     (; nu) = fluid
     (; k, nutf) = turbulence
     
@@ -113,9 +114,14 @@ i = @index(Global)
     face = faces[fID]
     nuc = nu[cID]
     (; delta, normal)= face
-    yplus = XCALibre.ModelPhysics.y_plus(k[cID], nuc, delta, cmu)
-    input = (yplus .- data_mean) ./ data_std
+    # yplus = XCALibre.ModelPhysics.y_plus(k[cID], nuc, delta, cmu)
+    # input = (yplus - data_mean) ./ data_std
         
-    nutw = nuc.*(input./output)
-    values[fID] = nutw
+    nutw = nuc*(yplus[i]/output[i])
+
+    if yplus[i] > 11.25
+        values[fID] = nutw
+    else
+        values[fID] = 0.0
+    end
 end

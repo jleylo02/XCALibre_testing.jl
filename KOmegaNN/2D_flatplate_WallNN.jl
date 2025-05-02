@@ -49,38 +49,23 @@ cmu = 0.09
 patchID = 3 # this is the wall ID
 wall_faceIDs = mesh.boundaries[patchID].IDs_range
 
-## Functor inputs using Flux.jl ##
-# ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
+## initialise memory
 nbfaces = wall_faceIDs |> length
-input = Float32.(zeros(1,nbfaces))
-input_s = Float32.(zeros(1,nbfaces)) 
+output = Float32.(zeros(1,nbfaces)) 
+y = Float32.(zeros(1,nbfaces))
+yPlus = Float32.(zeros(1,nbfaces))
+yPlus_s = Float32.(zeros(1,nbfaces)) 
 
 for fi ∈ eachindex(wall_faceIDs)
     fID = wall_faceIDs[fi]
     face = mesh.faces[fID]
-    input[1,fi] = face.delta
+    y[1,fi] = face.delta
 end
 
- 
 
-# input = (input .- data_mean) ./ data_std # I don't think this is doing anything
-# output = network(input)
-output = Float32.(zeros(1,nbfaces)) 
-
-output = network(input)
-NNgradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1]
-
-NNgradient(input[:, 500]) # this is how you call a single value
-
-## Functor setup using Lux.jl
-# ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
-# input = Float32.(zeros(1,ncells)) 
-# input = (input .- data_mean) ./ data_std
-# output, new_layer_states = network(y_train_n, parameters, layer_states)
-# compute_gradient(y_plus) = Zygote.jacobian(x -> network(x, parameters, layer_states)[1], y_plus)[1]
-# gradients = [compute_gradient(input[:, i]) for i in 1:size(input, 2)] # use of size instead of eachindex isnt ideal, but will not work with the latter
-# gradients = gradients/data_std # scales gradient back to unnormalised
-# gradients = hcat(gradients...)
+output = network(yPlus_s)
+NNgradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1] # maybe make var name better
+NNgradient(yPlus_s[:, 500])[1] # this is how you call a single value
 
 model = Physics(
     time = Steady(),
@@ -91,14 +76,14 @@ model = Physics(
     )
 
 k_w = NNKWallFunction(
-    input, output, NNgradient, network, model.turbulence.k, nu, data_mean, data_std, false
+    output, NNgradient, network, model.turbulence.k, nu, data_mean, data_std, cmu, y,yPlus, yPlus_s, false
 )
 
 
-@. input= (0.09^0.25)*input*sqrt(model.turbulence.k.values[wall_faceIDs]')/nu
-@. input_s = (input - data_mean)/data_std
+@. yPlus = (0.09^0.25)*y*sqrt(model.turbulence.k.values[wall_faceIDs]')/nu
+@. yPlus_s = (yPlus - data_mean)/data_std
 
-output = network(input_s)
+output = network(yPlus_s)
 
 
 @assign! model momentum U (
@@ -177,8 +162,8 @@ solvers = (
     )
 )
 
-# runtime = set_runtime(iterations=500, write_interval=100, time_step=1)
-runtime = set_runtime(iterations=1, write_interval=100, time_step=1)
+runtime = set_runtime(iterations=500, write_interval=100, time_step=1)
+# runtime = set_runtime(iterations=1, write_interval=100, time_step=1)
 
 hardware = set_hardware(backend=backend, workgroup=workgroup)
 
