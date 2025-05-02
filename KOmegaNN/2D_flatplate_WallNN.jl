@@ -51,7 +51,8 @@ wall_faceIDs = mesh.boundaries[patchID].IDs_range
 ## Functor inputs using Flux.jl ##
 # ncells = mesh.boundary_cellsID[mesh.boundaries[1].IDs_range] |> length
 nbfaces = wall_faceIDs |> length
-input = Float32.(zeros(1,nbfaces)) 
+input = Float32.(zeros(1,nbfaces))
+input_s = Float32.(zeros(1,nbfaces)) 
 
 for fi ∈ eachindex(wall_faceIDs)
     fID = wall_faceIDs[fi]
@@ -94,9 +95,9 @@ k_w = NNKWallFunction(
 
 
 @. input= (0.09^0.25)*input*sqrt(model.turbulence.k.values[wall_faceIDs]')/nu
-@. input = (input - data_mean)/data_std
+@. input_s = (input - data_mean)/data_std
 
-output = network(input)
+output = network(input_s)
 
 
 @assign! model momentum U (
