@@ -51,7 +51,7 @@ wall_faceIDs = mesh.boundaries[patchID].IDs_range
 
 ## initialise memory
 nbfaces = wall_faceIDs |> length
-output = Float32.(zeros(1,nbfaces)) 
+Uplus = Float32.(zeros(1,nbfaces)) 
 y = Float32.(zeros(1,nbfaces))
 yPlus = Float32.(zeros(1,nbfaces))
 yPlus_s = Float32.(zeros(1,nbfaces)) 
@@ -63,7 +63,7 @@ for fi ∈ eachindex(wall_faceIDs)
 end
 
 
-output = network(yPlus_s)
+Uplus = network(yPlus_s)
 NNgradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1] # maybe make var name better
 NNgradient(yPlus_s[:, 500])[1] # this is how you call a single value
 
@@ -76,14 +76,14 @@ model = Physics(
     )
 
 k_w = NNKWallFunction(
-    output, NNgradient, network, model.turbulence.k, nu, data_mean, data_std, cmu, y,yPlus, yPlus_s, false
+    Uplus, NNgradient, network, model.turbulence.k, nu, data_mean, data_std, cmu, y,yPlus, yPlus_s, false
 )
 
 
 @. yPlus = (0.09^0.25)*y*sqrt(model.turbulence.k.values[wall_faceIDs]')/nu
 @. yPlus_s = (yPlus - data_mean)/data_std
 
-output = network(yPlus_s)
+Uplus = network(yPlus_s)
 
 
 @assign! model momentum U (

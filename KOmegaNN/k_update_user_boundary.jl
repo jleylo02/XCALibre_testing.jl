@@ -9,11 +9,11 @@ XCALibre.Discretise.update_user_boundary!(
     # kernel!(BC, eqnModel, component, faces, cells, facesID_range, time, ndrange=kernel_range) 
 
     # Actually, here you will need to update your output vector field
-    (; yplus, yplus_s, y, k, nu, network, output, cmu) = BC.value
+    (; yplus, yplus_s, y, k, nu, network, Uplus, cmu) = BC.value
 
     @. yplus = (cmu^0.25)*y*sqrt(k.values[facesID_range]')/nu
     @. yplus_s = (yplus - data_mean)/data_std # here we scale to use properly with network, creating a local variable so not to overwrite the y_plus values
-    output .= network(yplus_s) # updateing U+
+    Uplus .= network(yplus_s) # updateing U+
     nothing
 
 
@@ -46,7 +46,7 @@ end
     i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
 
-    (; yplus, yplus_s, y, output, gradient, data_mean, data_std, cmu) = BC.value 
+    (; yplus, yplus_s, y, Uplus, gradient, data_mean, data_std, cmu) = BC.value 
     (; nu) = fluid
     (; U) = momentum
     (; k) = turbulence
@@ -65,7 +65,7 @@ end
     Uscaling = (cmu^0.25)/nuc*sqrt(k[cID])^2
     dUdy = (dUdy_s/data_std)*Uscaling
     # dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
-    nutw = nuc*(yplus[i]/output[i])
+    nutw = nuc*(yplus[i]/Uplus[i])
     mag_grad_U = XCALibre.ModelPhysics.mag(
         XCALibre.ModelPhysics.sngrad(U[cID], Uw, delta, normal)
         ) # JL: add the XCALibre.ModelPhysics to this line also?
@@ -107,7 +107,7 @@ end
 i = @index(Global)
     fID = i + start_ID - 1 # Redefine thread index to become face ID
     
-    (; yplus, y, output, gradient, data_mean, data_std, cmu) = BC.value 
+    (; yplus, y, Uplus, gradient, data_mean, data_std, cmu) = BC.value 
     (; nu) = fluid
     (; k, nutf) = turbulence
     
@@ -118,7 +118,7 @@ i = @index(Global)
     # yplus = XCALibre.ModelPhysics.y_plus(k[cID], nuc, delta, cmu)
     # input = (yplus - data_mean) ./ data_std
         
-    nutw = nuc*(yplus[i]/output[i])
+    nutw = nuc*(yplus[i]/Uplus[i])
 
     if yplus[i] > 11.25
         values[fID] = nutw
