@@ -19,23 +19,23 @@ mesh = UNV2D_mesh(mesh_file, scale=0.001)
 
 
 ###### Using Flux NN #######
-# includet("KOmegaNN_Flux.jl")
+# includet("NNWallFunction_Flux.jl")
 includet("k_struct_Flux.jl")
 includet("k_update_user_boundary_Flux.jl")
-@load "KOmegaNN/WallNormNN_Flux.bson" network
-@load "KOmegaNN/NNmean.bson" data_mean
-@load "KOmegaNN/NNstd.bson" data_std
+@load "NNWallFunction/NNWallFunction_Flux.bson" network
+@load "NNWallFunction/NNmean.bson" data_mean
+@load "NNWallFunction/NNstd.bson" data_std
 
 
 ######### Using Lux NN #########
-# includet("KOmegaNN_Lux.jl")
+# includet("NNWallFunction_Lux.jl")
 includet("k_struct_Lux.jl")
 includet("k_update_user_boundary_Lux.jl")
-@load "KOmegaNN/WallNormNN_Lux.bson" network
-@load "KOmegaNN/WallNormNN_ls.bson" layer_states
-@load "KOmegaNN/WallNormNN_p.bson" parameters
-@load "KOmegaNN/NNmean.bson" data_mean
-@load "KOmegaNN/NNstd.bson" data_std
+@load "NNWallFunction/NNWallFunction_Lux.bson" network
+@load "NNWallFunction/NNWallFunction_ls.bson" layer_states
+@load "NNWallFunction/NNWallFunction_p.bson" parameters
+@load "NNWallFunction/NNmean.bson" data_mean
+@load "NNWallFunction/NNstd.bson" data_std
 
 backend = CPU(); # activate_multithread(backend)
 mesh_dev = mesh; workgroup = 1024
