@@ -27,7 +27,7 @@ includet("k_update_user_boundary_Flux.jl")
 @load "KOmegaNN/NNstd.bson" data_std
 
 
-# Using Lux NN
+######### Using Lux NN #########
 # includet("KOmegaNN_Lux.jl")
 includet("k_struct_Lux.jl")
 includet("k_update_user_boundary_Lux.jl")

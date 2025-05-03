@@ -1,23 +1,11 @@
 XCALibre.Discretise.update_user_boundary!(
     BC::NeumannFunction{I,V}, faces, cells, facesID_range, time, config) where{I,V<:NNKWallFunction}= begin
-   
 
-    # (; hardware) = config
-    # (; backend, workgroup) = hardware
-    # kernel_range = length(facesID_range)
-    # kernel! = _update_user_boundary!(backend, workgroup, kernel_range)
-    # kernel!(BC, eqnModel, component, faces, cells, facesID_range, time, ndrange=kernel_range) 
-
-    # Actually, here you will need to update your output vector field
     (; yplus, yplus_s, y, k, nu, network, Uplus, cmu, parameters, layer_states) = BC.value
 
     @. yplus = (cmu^0.25)*y*sqrt(k.values[facesID_range]')/nu
     @. yplus_s = (yplus - data_mean)/data_std # here we scale to use properly with network, creating a local variable so not to overwrite the y_plus values
-   # Uplus .= network(yplus_s) # updateing U+ using Flux.jl
     Uplus, layer_states = network(yplus_s, parameters, layer_states)
-    nothing
-
-
 end
 
 function XCALibre.ModelPhysics.set_production!(P, BC::NeumannFunction, model, gradU, config)
@@ -39,7 +27,6 @@ function XCALibre.ModelPhysics.set_production!(P, BC::NeumannFunction, model, gr
     kernel!(
         P.values, BC, fluid, momentum, turbulence, faces, boundary_cellsID, start_ID, ndrange=length(facesID_range)
     )
-    nothing
 end
 
 @kernel function _set_production_NN!(
@@ -57,16 +44,12 @@ end
     face = faces[fID]
     nuc = nu[cID]
     (; delta, normal)= face
-    # yplus = XCALibre.ModelPhysics.y_plus(k[cID], nuc, delta, cmu) # might be able to revmoe
-    # input = (yplus .- data_mean) ./ data_std
-
-    # yplusi = yplus[i] # if time allows a quick a dirty performance trick
-
+    yplusi = yplus[i] 
+    Uplusi= Uplus[i]
     dUdy_s = gradient(yplus_s[:, i])[1]
     Uscaling = (((cmu^0.25)*sqrt(k[cID]))^2)/nuc
     dUdy = (dUdy_s/data_std)*Uscaling
-    # dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
-    nutw = nuc*(yplus[i]/Uplus[i])
+    nutw = nuc*(yplusi/Uplusi)
     mag_grad_U = XCALibre.ModelPhysics.mag(
         XCALibre.ModelPhysics.sngrad(U[cID], Uw, delta, normal)
         )  
@@ -92,8 +75,6 @@ function XCALibre.ModelPhysics.correct_nut_wall!(νtf, BC::NeumannFunction, mode
     kernel!(
         νtf.values, fluid, turbulence, BC, faces, boundary_cellsID, start_ID, ndrange=length(facesID_range)
     )
-
-    nothing
 end
 
 @kernel function _correct_nut_wall_NN!(
@@ -109,9 +90,9 @@ i = @index(Global)
     face = faces[fID]
     nuc = nu[cID]
     (; delta, normal)= face
-    # yplus = XCALibre.ModelPhysics.y_plus(k[cID], nuc, delta, cmu)
-    # input = (yplus - data_mean) ./ data_std
+    yplusi = yplus[i] # if time allows a quick a dirty performance trick
+    Uplusi= Uplus[i]
         
-    nutw = nuc*(yplus[i]/Uplus[i])
+    nutw = nuc*(yplusi/Uplusi)
     values[fID] = nutw
 end
