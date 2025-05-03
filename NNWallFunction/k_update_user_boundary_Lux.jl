@@ -49,7 +49,7 @@ end
     dUdy_s = gradient(yplus_s[:, i])[1]
     Uscaling = (((cmu^0.25)*sqrt(k[cID]))^2)/nuc
     dUdy = (dUdy_s/data_std)*Uscaling
-    nutw = nuc*(yplusi/Uplusi)
+    nutw = nuc*(yplusi/Uplusi-1)
     mag_grad_U = XCALibre.ModelPhysics.mag(
         XCALibre.ModelPhysics.sngrad(U[cID], Uw, delta, normal)
         )  
@@ -93,6 +93,6 @@ i = @index(Global)
     yplusi = yplus[i] 
     Uplusi= Uplus[i]
         
-    nutw = nuc*(yplusi/Uplusi)
+    nutw = nuc*(yplusi/Uplusi-1)
     values[fID] = nutw
 end
