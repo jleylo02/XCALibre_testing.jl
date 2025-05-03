@@ -1,8 +1,8 @@
 # using Plots
 using XCALibre
 # using CUDA
-# using Flux
-using Lux
+using Flux
+# using Lux
 using BSON: @load
 using StaticArrays
 using Statistics
@@ -29,13 +29,13 @@ includet("k_update_user_boundary_Flux.jl")
 
 ######### Using Lux NN #########
 # includet("NNWallFunction_Lux.jl")
-includet("k_struct_Lux.jl")
-includet("k_update_user_boundary_Lux.jl")
-@load "NNWallFunction/NNWallFunction_Lux.bson" network
-@load "NNWallFunction/NNWallFunction_ls.bson" layer_states
-@load "NNWallFunction/NNWallFunction_p.bson" parameters
-@load "NNWallFunction/NNmean.bson" data_mean
-@load "NNWallFunction/NNstd.bson" data_std
+# includet("k_struct_Lux.jl")
+# includet("k_update_user_boundary_Lux.jl")
+# @load "NNWallFunction/NNWallFunction_Lux.bson" network
+# @load "NNWallFunction/NNWallFunction_ls.bson" layer_states
+# @load "NNWallFunction/NNWallFunction_p.bson" parameters
+# @load "NNWallFunction/NNmean.bson" data_mean
+# @load "NNWallFunction/NNstd.bson" data_std
 
 backend = CPU(); # activate_multithread(backend)
 mesh_dev = mesh; workgroup = 1024
@@ -71,10 +71,12 @@ Uplus = network(yPlus_s)
 NNgradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1] 
 NNgradient(yPlus_s[:, 500])[1] # this is how you call a single value 
 
+# (yplus - data_mean)/data_std
+
 ###### Lux NN gradient #############
-Uplus, layer_states = network(yPlus_s, parameters, layer_states)
-NNgradient(y_plus) = Zygote.jacobian(x -> network(x, parameters, layer_states)[1], y_plus)[1] 
-NNgradient(yPlus_s[:, 500])[1] # this is how you call a single value
+# Uplus, layer_states = network(yPlus_s, parameters, layer_states)
+# NNgradient(y_plus) = Zygote.jacobian(x -> network(x, parameters, layer_states)[1], y_plus)[1] 
+# NNgradient(yPlus_s[:, 500])[1] # this is how you call a single value
 
 model = Physics(
     time = Steady(),
@@ -90,9 +92,9 @@ k_w = NNKWallFunction(
 )
 
 #### Lux NN functor ####
-k_w = NNKWallFunction(
-    Uplus, NNgradient, network, parameters, layer_states, model.turbulence.k, nu, data_mean, data_std, cmu, y,yPlus, yPlus_s, false
-)
+# k_w = NNKWallFunction(
+#     Uplus, NNgradient, network, parameters, layer_states, model.turbulence.k, nu, data_mean, data_std, cmu, y,yPlus, yPlus_s, false
+# )
 
 @assign! model momentum U (
     XCALibre.Dirichlet(:inlet, velocity),

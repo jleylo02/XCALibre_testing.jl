@@ -4,6 +4,7 @@ XCALibre.Discretise.update_user_boundary!(
     (; yplus, yplus_s, y, k, nu, network, Uplus, cmu) = BC.value
 
     @. yplus = (cmu^0.25)*y*sqrt(k.values[facesID_range]')/nu # calculating yplus values, keeping consistency with XCALibre
+    # println(maximum(yplus), " ", minimum(yplus))
     @. yplus_s = (yplus - data_mean)/data_std # creating a local variable so not to overwrite the y_plus values
     Uplus .= network(yplus_s) # updating U+ 
     nothing
@@ -57,11 +58,13 @@ end
     Uplusi= Uplus[i]
     dUdy_s = gradient(yplus_s[:, i])[1]
     Uscaling = (((cmu^0.25)*sqrt(k[cID]))^2)/nuc
-    dUdy = (dUdy_s/data_std)*Uscaling
+    # dUdy = (dUdy_s/data_std)*Uscaling
+    dUdy = (dUdy_s*data_std)
     nutw = nuc*(yplusi/Uplusi)
     mag_grad_U = XCALibre.ModelPhysics.mag(
         XCALibre.ModelPhysics.sngrad(U[cID], Uw, delta, normal)
         ) 
+    # values[cID] = nutw*mag_grad_U*dUdy
     values[cID] = nutw*mag_grad_U*dUdy
 end
 
@@ -104,6 +107,7 @@ i = @index(Global)
     yplusi = yplus[i] 
     Uplusi= Uplus[i]
         
-    nutw = nuc*(yplusi/Uplusi)
+    # nutw = nuc*(yplusi/Uplusi)
+    nutw = nuc*(yplusi/Uplusi - 1) # nu is added later as part of the implementation
     values[fID] = nutw
 end
