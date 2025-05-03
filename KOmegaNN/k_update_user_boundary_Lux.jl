@@ -90,7 +90,7 @@ i = @index(Global)
     face = faces[fID]
     nuc = nu[cID]
     (; delta, normal)= face
-    yplusi = yplus[i] # if time allows a quick a dirty performance trick
+    yplusi = yplus[i] 
     Uplusi= Uplus[i]
         
     nutw = nuc*(yplusi/Uplusi)

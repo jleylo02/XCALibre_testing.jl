@@ -68,12 +68,12 @@ end
 
 #### Flux NN gradient ###########
 Uplus = network(yPlus_s)
-NNgradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1] # maybe make var name better
+NNgradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1] 
 NNgradient(yPlus_s[:, 500])[1] # this is how you call a single value 
 
 ###### Lux NN gradient #############
 Uplus, layer_states = network(yPlus_s, parameters, layer_states)
-NNgradient(y_plus) = Zygote.jacobian(x -> network(x, parameters, layer_states)[1], y_plus)[1] # maybe make var name better
+NNgradient(y_plus) = Zygote.jacobian(x -> network(x, parameters, layer_states)[1], y_plus)[1] 
 NNgradient(yPlus_s[:, 500])[1] # this is how you call a single value
 
 model = Physics(
@@ -98,7 +98,6 @@ k_w = NNKWallFunction(
     XCALibre.Dirichlet(:inlet, velocity),
     Neumann(:outlet, 0.0),
     Wall(:wall, [0.0, 0.0, 0.0]),
-    # Dirichlet(:wall, [0.0, 0.0, 0.0]),
     Neumann(:top, 0.0)
 )
 
@@ -170,7 +169,6 @@ solvers = (
 )
 
 runtime = set_runtime(iterations=500, write_interval=100, time_step=1)
-# runtime = set_runtime(iterations=1, write_interval=100, time_step=1)
 
 hardware = set_hardware(backend=backend, workgroup=workgroup)
 
