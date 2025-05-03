@@ -62,21 +62,14 @@ end
     # yplusi = yplus[i] # if time allows a quick a dirty performance trick
 
     dUdy_s = gradient(yplus_s[:, i])[1]
-    Uscaling = (cmu^0.25)/nuc*sqrt(k[cID])^2
+    Uscaling = (((cmu^0.25)*sqrt(k[cID]))^2)/nuc
     dUdy = (dUdy_s/data_std)*Uscaling
     # dUdy = ((cmu^0.25*sqrt(k[cID]))^2/nuc)*gradient
     nutw = nuc*(yplus[i]/Uplus[i])
     mag_grad_U = XCALibre.ModelPhysics.mag(
         XCALibre.ModelPhysics.sngrad(U[cID], Uw, delta, normal)
-        ) # JL: add the XCALibre.ModelPhysics to this line also?
-    
-
-    if yplus[i] > 11.25
-        # values[cID] = (nu[cID] + nutw)*mag_grad_U*dUdy 
-        values[cID] = nutw*mag_grad_U*dUdy
-    else
-        values[cID] = 0.0
-    end
+        ) 
+    values[cID] = nutw*mag_grad_U*dUdy
 end
 
 function XCALibre.ModelPhysics.correct_nut_wall!(νtf, BC::NeumannFunction, model, config)
@@ -119,10 +112,5 @@ i = @index(Global)
     # input = (yplus - data_mean) ./ data_std
         
     nutw = nuc*(yplus[i]/Uplus[i])
-
-    if yplus[i] > 11.25
-        values[fID] = nutw
-    else
-        values[fID] = 0.0
-    end
+    values[fID] = nutw
 end
