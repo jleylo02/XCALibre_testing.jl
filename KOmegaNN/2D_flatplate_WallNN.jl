@@ -17,16 +17,20 @@ grid = "flatplate_2D_highRe.unv"
 mesh_file = joinpath(grids_dir, grid)
 mesh = UNV2D_mesh(mesh_file, scale=0.001)
 
-includet("k_struct.jl")
-includet("k_update_user_boundary.jl")
-# Using Flux NN
+
+###### Using Flux NN #######
 # includet("KOmegaNN_Flux.jl")
-#@load "KOmegaNN/WallNormNN_Flux.bson" network
-#@load "KOmegaNN/NNmean.bson" data_mean
-#@load "KOmegaNN/NNstd.bson" data_std
+includet("k_struct_Flux.jl")
+includet("k_update_user_boundary_Flux.jl")
+@load "KOmegaNN/WallNormNN_Flux.bson" network
+@load "KOmegaNN/NNmean.bson" data_mean
+@load "KOmegaNN/NNstd.bson" data_std
+
 
 # Using Lux NN
 # includet("KOmegaNN_Lux.jl")
+includet("k_struct_Lux.jl")
+includet("k_update_user_boundary_Lux.jl")
 @load "KOmegaNN/WallNormNN_Lux.bson" network
 @load "KOmegaNN/WallNormNN_ls.bson" layer_states
 @load "KOmegaNN/WallNormNN_p.bson" parameters
@@ -62,10 +66,12 @@ for fi ∈ eachindex(wall_faceIDs)
     y[1,fi] = face.delta
 end
 
-#=#### Flux NN gradient ###########
+#### Flux NN gradient ###########
 Uplus = network(yPlus_s)
 NNgradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1] # maybe make var name better
-NNgradient(yPlus_s[:, 500])[1] # this is how you call a single value =#
+NNgradient(yPlus_s[:, 500])[1] # this is how you call a single value 
+
+
 
 ###### Lux NN gradient #############
 Uplus, layer_states = network(yPlus_s, parameters, layer_states)

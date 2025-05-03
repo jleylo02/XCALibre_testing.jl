@@ -13,8 +13,7 @@ XCALibre.Discretise.update_user_boundary!(
 
     @. yplus = (cmu^0.25)*y*sqrt(k.values[facesID_range]')/nu
     @. yplus_s = (yplus - data_mean)/data_std # here we scale to use properly with network, creating a local variable so not to overwrite the y_plus values
-   # Uplus .= network(yplus_s) # updateing U+ using Flux.jl
-    Uplus, new_layer_states = network(yplus_s, parameters, layer_states)
+    Uplus .= network(yplus_s) # updateing U+ using Flux.jl
     nothing
 
 
