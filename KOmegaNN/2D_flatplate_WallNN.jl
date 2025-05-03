@@ -71,8 +71,6 @@ Uplus = network(yPlus_s)
 NNgradient(y_plus) = Zygote.gradient(x -> network(x)[1], y_plus)[1] # maybe make var name better
 NNgradient(yPlus_s[:, 500])[1] # this is how you call a single value 
 
-
-
 ###### Lux NN gradient #############
 Uplus, layer_states = network(yPlus_s, parameters, layer_states)
 NNgradient(y_plus) = Zygote.jacobian(x -> network(x, parameters, layer_states)[1], y_plus)[1] # maybe make var name better
@@ -86,11 +84,10 @@ model = Physics(
     domain = mesh_dev
     )
 
-#=    #### Flux NN functor #####
+#### Flux NN functor #####
 k_w = NNKWallFunction(
     Uplus, NNgradient, network, model.turbulence.k, nu, data_mean, data_std, cmu, y,yPlus, yPlus_s, false
 )
-=#
 
 #### Lux NN functor ####
 k_w = NNKWallFunction(
@@ -116,7 +113,6 @@ k_w = NNKWallFunction(
     XCALibre.Dirichlet(:inlet, k_inlet),
     Neumann(:outlet, 0.0),
     NeumannFunction(:wall, k_w),
-    # Neumann(:wall, 0.0),
     Neumann(:top, 0.0)
 )
 
