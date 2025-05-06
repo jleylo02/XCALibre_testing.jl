@@ -1,3 +1,35 @@
+"This simulation setup uses a neural network driven wall function, to replace the KWallFunction and NutWallFunction in k-w turbulence model simulations
+
+The neural networks were constructed in Flux.jl and Lux.jl, which as machine learning libraries. The networks themselves are included in the NNWallFunction folder,
+and can be accessed to gain a knowledge of how the models were trained and tested. These files contain supporting documentation, which should provide
+a baseline knowledge to users to be able to understand the code, alongside the comments made throughout. The recommedation for users who are new to 
+Machine learning is to start by using Flux.jl, as it is a simpler packages with more 'hand-holding' for new users. Once a good knowledge of this is 
+established, users can move onto the Lux.jl model, which has a more complex architecture, but offers increased performance.
+
+BSON.jl is a serialisation package, recommended and utilised here to load the network and its parameters, allowing it to be called internally to
+provide per-iteration updates to the turbulence model and solvers. 
+
+A struct has been defined (k_struct), that holds any user-defined and network data/variables, that need to be passed to the model. 
+
+These values are updated on a per-iteration basis, using the k_update_user_boundary! function. This function calculates the yPlus values, using 
+the turbulent kinetic energy 'k', which is updated each iteration. This updated yPlus value is then passed to the neural network, which computes
+the new predicted UPlus values. The update_user_boundary! then updates the internals of struct, whose values are then passed into the set_production!
+and correct_nut_wall! functions.
+
+The set_production! function uses multiple dispatch, to dispatch when the BC is set as the NeumannFunction. This allows the boundary condition to act
+with the same behaviour as the traditional wall functions, but using a user-defined function. The_set_production_!kernel then calculates the corrected 
+turblent kinetic energy production, which is applied via the apply_boundary_conditions! function, correcting the k values in the KOmega model.
+This produces the corrected values for k in the wall adjacent cells, based on the neural network gradient.
+
+The network gradient is calculated using Zygote.jl, which is an auto-differentiation package, enabling the computation of complex gradients from ML
+models, which would be impossible via traditional methods. This gradient is then scaled, to allow the computation of the velocity gradient, which is 
+used in the subsequent Pk calculation. This process is defined in lines 36-66 in the k_update_user_boundary files.
+
+The correct_nut_wall! function also uses multiple dispatch, to dispatch when the BC is set as the NeumannFunction. The_correct_nut_wall_NN! kernel
+then calculates the corrected nutw, using the laminar nu, yPlus and Uplus values. This values is  applied via the apply_boundary_conditions! function, correcting the k values in the KOmega model.
+This produces the corrected values for nutw in the wall adjacent cells. This process is defined in lines 68-109 k_update_user_boundary files.
+
+"
 # using Plots
 using XCALibre
 # using CUDA
