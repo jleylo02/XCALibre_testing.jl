@@ -1,5 +1,5 @@
 XCALibre.Discretise.update_user_boundary!(
-    BC::NeumannFunction{I,V}, faces, cells, facesID_range, time, config) where{I,V<:NNKWallFunction}= begin
+    BC::NeumannFunction{I,V}, faces, cells, facesID_range, time, config) where{I,V<:NNWallFunction}= begin
 
     (; yplus, yplus_s, y, k, nu, network, Uplus, cmu) = BC.value
 
@@ -48,11 +48,7 @@ end
     face = faces[fID]
     nuc = nu[cID]
     (; delta, normal)= face
-    # yplus = XCALibre.ModelPhysics.y_plus(k[cID], nuc, delta, cmu) # might be able to revmoe
-    # input = (yplus .- data_mean) ./ data_std
-
-    # yplusi = yplus[i] # if time allows a quick a dirty performance trick
-
+    
     yplusi = yplus[i] 
     Uplusi= Uplus[i]
     dUdy_s = gradient(yplus_s[:, i])[1]

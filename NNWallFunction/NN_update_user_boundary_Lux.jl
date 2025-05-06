@@ -1,5 +1,5 @@
 XCALibre.Discretise.update_user_boundary!(
-    BC::NeumannFunction{I,V}, faces, cells, facesID_range, time, config) where{I,V<:NNKWallFunction}= begin
+    BC::NeumannFunction{I,V}, faces, cells, facesID_range, time, config) where{I,V<:NNWallFunction}= begin
 
     (; yplus, yplus_s, y, k, nu, network, Uplus, cmu, parameters, layer_states) = BC.value
 

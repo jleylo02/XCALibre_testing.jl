@@ -1,5 +1,5 @@
 ######### Lux.jl NN struct ###########
-struct NNKWallFunction{U,G,N,P,L,K,K1,M,S,C,Y,Yp,Ys,T} <: XCALibreUserFunctor
+struct NNWallFunction{U,G,N,P,L,K,K1,M,S,C,Y,Yp,Ys,T} <: XCALibreUserFunctor
     Uplus::U # vector to hold network prediction (U+)
     gradient::G # function to calcuate gradient DU+/dy+
     network::N # neural network
@@ -15,4 +15,4 @@ struct NNKWallFunction{U,G,N,P,L,K,K1,M,S,C,Y,Yp,Ys,T} <: XCALibreUserFunctor
     yplus_s::Ys # scaled y plus values (input to the network)
     steady::T # this will need to be false to run at every timestep
 end
-Adapt.@adapt_structure NNKWallFunction
+Adapt.@adapt_structure NNWallFunction

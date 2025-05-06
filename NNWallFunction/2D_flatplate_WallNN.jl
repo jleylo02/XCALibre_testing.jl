@@ -9,7 +9,7 @@ established, users can move onto the Lux.jl model, which has a more complex arch
 BSON.jl is a serialisation package, recommended and utilised here to load the network and its parameters, allowing it to be called internally to
 provide per-iteration updates to the turbulence model and solvers. 
 
-A struct has been defined (k_struct), that holds any user-defined and network data/variables, that need to be passed to the model. 
+A struct has been defined (NN_struct), that holds any user-defined and network data/variables, that need to be passed to the model. 
 
 These values are updated on a per-iteration basis, using the k_update_user_boundary! function. This function calculates the yPlus values, using 
 the turbulent kinetic energy 'k', which is updated each iteration. This updated yPlus value is then passed to the neural network, which computes
@@ -23,12 +23,16 @@ This produces the corrected values for k in the wall adjacent cells, based on th
 
 The network gradient is calculated using Zygote.jl, which is an auto-differentiation package, enabling the computation of complex gradients from ML
 models, which would be impossible via traditional methods. This gradient is then scaled, to allow the computation of the velocity gradient, which is 
-used in the subsequent Pk calculation. This process is defined in lines 36-66 in the k_update_user_boundary files.
+used in the subsequent Pk calculation. This process is defined in lines 36-66 in the NN_update_user_boundary files.
 
 The correct_nut_wall! function also uses multiple dispatch, to dispatch when the BC is set as the NeumannFunction. The_correct_nut_wall_NN! kernel
 then calculates the corrected nutw, using the laminar nu, yPlus and Uplus values. This values is  applied via the apply_boundary_conditions! function, correcting the k values in the KOmega model.
-This produces the corrected values for nutw in the wall adjacent cells. This process is defined in lines 68-109 k_update_user_boundary files.
+This produces the corrected values for nutw in the wall adjacent cells. This process is defined in lines 68-109 NN_update_user_boundary files.
 
+The resulting simulation uses the NN boundary conditions, applying them in the same manner as traditional wall functions in this high Re 2D flat plate simulation.
+The results have been verified against the traditional wall functions, but not validated against experimental or high fidelity data.
+
+This process demonstrates a proof of concept, that neural networks can be integrated into XCALibre, to increase accuracy and performance.
 "
 # using Plots
 using XCALibre
@@ -52,8 +56,8 @@ mesh = UNV2D_mesh(mesh_file, scale=0.001)
 
 ###### Using Flux NN #######
 # includet("NNWallFunction_Flux.jl")
-includet("k_struct_Flux.jl")
-includet("k_update_user_boundary_Flux.jl")
+includet("NN_struct_Flux.jl")
+includet("NN_update_user_boundary_Flux.jl")
 @load "NNWallFunction/NNWallFunction_Flux.bson" network
 @load "NNWallFunction/NNmean.bson" data_mean
 @load "NNWallFunction/NNstd.bson" data_std
@@ -61,8 +65,8 @@ includet("k_update_user_boundary_Flux.jl")
 
 ######### Using Lux NN #########
 # includet("NNWallFunction_Lux.jl")
-includet("k_struct_Lux.jl")
-includet("k_update_user_boundary_Lux.jl")
+includet("NN_struct_Lux.jl")
+includet("NN_update_user_boundary_Lux.jl")
 @load "NNWallFunction/NNWallFunction_Lux.bson" network
 @load "NNWallFunction/NNWallFunction_ls.bson" layer_states
 @load "NNWallFunction/NNWallFunction_p.bson" parameters
@@ -117,12 +121,12 @@ model = Physics(
     )
 
 #### Flux NN functor #####
-k_w = NNKWallFunction(
+k_w = NNWallFunction(
     Uplus, NNgradient, network, model.turbulence.k, nu, data_mean, data_std, cmu, y,yPlus, yPlus_s, false
 )
 
 #### Lux NN functor ####
-k_w = NNKWallFunction(
+k_w = NNWallFunction(
     Uplus, NNgradient, network, parameters, layer_states, model.turbulence.k, nu, data_mean, data_std, cmu, y,yPlus, yPlus_s, false
 )
 
